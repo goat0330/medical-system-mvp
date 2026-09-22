@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>住院医疗与医保闭环 MVP</title>
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./app/styles.css" />
+  </head>
+  <body>
+    <div id="app" class="shell">
+      <header class="topbar">
+        <div class="brand">
+          <div class="brand-mark">M</div>
+          <div>
+            <div class="brand-title">住院医疗与医保闭环</div>
+            <div class="brand-subtitle">Clinical-to-Claim MVP · 国家 DRG/DIP 3.0</div>
+          </div>
+        </div>
+        <div class="topbar-meta">
+          <span class="env-pill"><i></i>演示环境</span>
+          <span id="clock"></span>
+          <span class="avatar">医</span>
+        </div>
+      </header>
+
+      <div class="workspace">
+        <aside class="sidebar">
+          <div class="sidebar-label">住院 Episode</div>
+          <div id="episode-summary" class="episode-card"></div>
+          <nav id="nav" class="nav"></nav>
+          <div class="sidebar-foot">
+            <div class="source-note">规则口径</div>
+            <div class="source-line"><span class="dot green"></span>国家 DRG 3.0 元数据</div>
+            <div class="source-line"><span class="dot green"></span>国家 DIP 3.0 元数据</div>
+            <div class="source-line"><span class="dot amber"></span>正式规则包待导入</div>
+          </div>
+        </aside>
+
+        <main class="main" id="main"></main>
+
+        <aside class="right-rail" id="right-rail"></aside>
+      </div>
+    </div>
+    <script type="module" src="./app/main.js"></script>
+  </body>
+</html>
