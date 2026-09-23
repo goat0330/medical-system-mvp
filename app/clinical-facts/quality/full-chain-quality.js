@@ -97,11 +97,28 @@ function auditIssues({ episode, auditRun }) {
 
 function dedupe(issues) {
   const map = new Map();
-  for (const issue of issues) { const key = `${issue.qcDomain}|${issue.type}|${issue.title}`; if (!map.has(key)) map.set(key, issue); }
+  for (const issue of issues) {
+    const rootConflict = issue.conflictRefs?.[0];
+    const key = rootConflict ? `CONFLICT|${rootConflict}` : `${issue.qcDomain}|${issue.type}|${issue.title}`;
+    const existing = map.get(key);
+    if (!existing) { map.set(key, issue); continue; }
+    map.set(key, createQualityIssue({
+      ...existing,
+      blocking: existing.blocking || issue.blocking,
+      impactScope: [...new Set([...existing.impactScope, ...issue.impactScope])],
+      evidenceRefs: [...new Set([...existing.evidenceRefs, ...issue.evidenceRefs])],
+      factRefs: [...new Set([...existing.factRefs, ...issue.factRefs])],
+      conflictRefs: [...new Set([...existing.conflictRefs, ...issue.conflictRefs])],
+    }));
+  }
   return [...map.values()];
 }
+function issuesForDomain(domainId, issues) {
+  const impact = ({ FRONT_PAGE:'FRONTPAGE', SETTLEMENT:'SETTLEMENT', GROUPING:'GROUPING', INSURANCE_AUDIT:'AUDIT' })[domainId];
+  return issues.filter((issue) => issue.qcDomain === domainId || (impact && issue.impactScope.includes(impact)));
+}
 function domainStatus(domainId, issues, executed) {
-  if (!executed) return 'NOT_RUN'; const rows = issues.filter((x)=>x.qcDomain===domainId);
+  if (!executed) return 'NOT_RUN'; const rows = issuesForDomain(domainId, issues);
   if (rows.some((x)=>x.blocking || x.severity === 'high')) return 'BLOCKED';
   if (rows.length) return 'REVIEW'; return 'PASS';
 }
@@ -139,7 +156,7 @@ export function runFullChainQualityControl({ episode, documentSnapshots = [], fa
       : domain.id === 'SETTLEMENT' ? Boolean(settlement)
       : domain.id === 'GROUPING' ? Boolean(groupingRun)
       : Boolean(auditRun && !auditRun.blocked);
-    const rows = issues.filter((x)=>x.qcDomain===domain.id);
+    const rows = issuesForDomain(domain.id, issues);
     return { ...domain, executed, status:domainStatus(domain.id,issues,executed), issueCount:rows.length, blockingCount:rows.filter((x)=>x.blocking).length };
   });
   return {

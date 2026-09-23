@@ -1,5 +1,6 @@
 import { strict as assert } from 'node:assert';
 import { buildClinicalFactContext } from '../app/clinical-facts/index.js';
+import { normalizeMappedValue } from '../app/clinical-facts/mapping/mapping-registry.js';
 import { createFactDecision } from '../app/clinical-facts/models/decision.js';
 import { buildGroupingFactProjection } from '../app/clinical-facts/projection/grouping-projection.js';
 import { qualityIssuesFromFactConflicts } from '../app/clinical-facts/quality/cross-source-quality.js';
@@ -39,4 +40,22 @@ assert.equal(grouping.patient.age,70);
 assert.equal(grouping.principalDiagnosis.code,'K80.302');
 assert.ok(grouping.principalDiagnosis.factRefs.code.factId);
 assert.ok(grouping.principalDiagnosis.factRefs.code.evidenceRefs.length>=1);
+
+assert.equal(normalizeMappedValue('patient.birthDate','1983年02月18日'),'1983-02-18');
+const admissionForms=[
+  '2026-09-18T01:20:00.000Z',
+  '2026-09-18T09:20:00+08:00',
+  '2026-09-18 09:20:00',
+  '2026年09月18日09时20分',
+];
+assert.equal(new Set(admissionForms.map((x)=>normalizeMappedValue('admission.at',x))).size,1);
+assert.equal(normalizeMappedValue('discharge.at','2026年09月23日10时30分'),normalizeMappedValue('discharge.at','2026-09-23T02:30:00.000Z'));
+
+const goldenDateEpisode={...episode,episodeId:'EP-DATE-001',patient:{...episode.patient,birthDate:'1983-02-18',age:43},admission:{...episode.admission,at:'2026-09-18T09:20:00+08:00'},discharge:{...episode.discharge,at:'2026-09-23T10:30:00+08:00'}};
+const dateContext=buildClinicalFactContext({episode:goldenDateEpisode,documentSnapshots:[{templateId:'frontpage',snapshot:{data:[
+  {keyCode:'DE02.01.005.01',keyName:'出生日期',keyValue:'1983年02月18日'},
+  {keyCode:'DE06.00.092.00',keyName:'入院时间',keyValue:'2026年09月18日09时20分'},
+  {keyCode:'DE06.00.017.00',keyName:'出院时间',keyValue:'2026年09月23日10时30分'},
+]}}]});
+assert.ok(!dateContext.conflicts.some((x)=>['patient.birthDate','admission.at','discharge.at'].includes(x.concept)),'equivalent Chinese and ISO date formats must not create conflicts');
 console.log('PASS clinical fact/evidence/conflict/projection');

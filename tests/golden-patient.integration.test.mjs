@@ -45,6 +45,6 @@ assert.equal(dipRun.groupingResult.exclusion.code, expectedDip.expectedResult.ex
 const evidence = buildEvidenceIndex(episode);
 assert.ok(evidence.some((item) => item.sourceType === 'LIS' && item.sourceId === 'LAB-20260918'));
 assert.ok(evidence.some((item) => item.sourceType === 'RIS' && item.sourceId === 'IMG-US-001'));
-assert.ok(evidence.some((item) => item.sourceType === 'EMR' && item.sourceId === 'VITAL-1'));
+assert.ok(evidence.some((item) => item.sourceType === 'NURSING' && item.sourceId === 'vital-1' && item.factPath?.startsWith('goldenData.clinical.vitals')));
 
 console.log('PASS Golden patient integration: settlement, DRG HC45, DIP diagnosis exclusion, and clinical evidence');

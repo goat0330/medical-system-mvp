@@ -19,4 +19,10 @@ const notRun=runFullChainQualityControl({episode,documentSnapshots:[],factContex
 assert.equal(notRun.domains.find((x)=>x.id==='DOCUMENT').status,'NOT_RUN');
 assert.equal(notRun.domains.find((x)=>x.id==='CROSS_DOCUMENT').status,'NOT_RUN');
 assert.equal(notRun.finalStatus,'PARTIAL');
+
+const sharedConflict={conflictId:'CONFLICT-DEDUP-1',concept:'patient.birthDate',severity:'high',blocking:true,status:'UNRESOLVED',reason:'出生日期待核对',impactScope:['SETTLEMENT','GROUPING'],candidates:[]};
+const duplicateIssueRun=runFullChainQualityControl({episode,documentSnapshots:[],factContext:{...facts,conflicts:[sharedConflict]},settlement:{...settlement,factConflicts:[sharedConflict]}});
+assert.equal(duplicateIssueRun.issues.filter((x)=>x.conflictRefs.includes(sharedConflict.conflictId)).length,1,'one fact conflict must remain one issue across quality domains');
+assert.equal(duplicateIssueRun.summary.total,1,'duplicate downstream validation must not inflate the total issue count');
+assert.equal(duplicateIssueRun.domains.find((x)=>x.id==='SETTLEMENT').status,'BLOCKED','downstream domain status must still reflect the root issue impact');
 console.log('PASS six-domain full-chain quality control');

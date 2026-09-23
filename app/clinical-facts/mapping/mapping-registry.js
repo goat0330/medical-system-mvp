@@ -5,7 +5,7 @@ const entry = (concept, config = {}) => Object.freeze({
   kind: 'scalar',
   critical: false,
   conflictPolicy: 'exact',
-  impactScope: [],
+  impactScope: config.settlementPath ? ['SETTLEMENT'] : [],
   sourcePriority: ['FACT_DECISION', 'FRONTPAGE', 'DISCHARGE', 'SURGERY', 'PROGRESS', 'ADMISSION', 'EPISODE'],
   ...config,
 });
@@ -92,6 +92,24 @@ export function settlementPathForConcept(concept) {
   return MAPPING_BY_CONCEPT[concept]?.settlementPath || null;
 }
 
+function dateParts(raw) {
+  const match = String(raw || '').trim().match(/^(\d{4})\s*(?:年|[-/.])\s*(\d{1,2})\s*(?:月|[-/.])\s*(\d{1,2})\s*(?:日)?(?:T|\s*)?(?:(\d{1,2})\s*(?:时|:)\s*(\d{1,2})\s*(?:分|:)\s*(\d{1,2})?\s*(?:秒)?(?:\.(\d+))?)?\s*(Z|[+-]\d{2}:?\d{2}|[+-]\d{2})?$/i);
+  if (!match) return null;
+  const [, yearText, monthText, dayText, hourText = '0', minuteText = '0', secondText = '0', fraction = '', zone = ''] = match;
+  const year = Number(yearText), month = Number(monthText), day = Number(dayText);
+  const hour = Number(hourText), minute = Number(minuteText), second = Number(secondText);
+  const date = new Date(`${yearText}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}T00:00:00Z`);
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() + 1 !== month || date.getUTCDate() !== day || hour > 23 || minute > 59 || second > 59) return null;
+  let offset = zone;
+  if (!offset) offset = '+08:00'; // Clinical timestamps without an offset are local China time.
+  else if (offset.toUpperCase() !== 'Z') {
+    const parts = offset.match(/^([+-])(\d{2}):?(\d{2})?$/);
+    if (!parts) return null;
+    offset = `${parts[1]}${parts[2]}:${parts[3] || '00'}`;
+  }
+  return { date: `${yearText}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`, instant: `${yearText}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}T${String(hour).padStart(2,'0')}:${String(minute).padStart(2,'0')}:${String(second).padStart(2,'0')}${fraction ? `.${fraction}` : ''}${offset}` };
+}
+
 export function normalizeMappedValue(concept, value) {
   if (value && typeof value === 'object') value = value.value ?? value.code ?? value.text ?? '';
   const raw = String(value ?? '').trim();
@@ -104,8 +122,10 @@ export function normalizeMappedValue(concept, value) {
     if (['2', '女'].includes(raw)) return '女';
     return raw;
   }
+  if (concept === 'patient.birthDate') return dateParts(raw)?.date || raw;
   if (concept.endsWith('.at')) {
-    const d = new Date(raw.replace(' ', 'T'));
+    const parts = dateParts(raw);
+    const d = new Date(parts?.instant || raw);
     return Number.isFinite(d.getTime()) ? d.toISOString() : raw;
   }
   return raw;

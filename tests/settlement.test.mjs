@@ -63,12 +63,14 @@ const mapped = buildSettlementList(episode, {
   overrides: { 'patient.name': '手工修订姓名', 'fees.rows.0.amount': '500' },
 });
 assert.equal(mapped.patient.name, '手工修订姓名');
-assert.equal(mapped.inpatient.principalDiagnosis.name, '病案首页诊断', 'coded frontpage is authoritative over discharge and progress text');
+assert.equal(mapped.inpatient.principalDiagnosis.name, episode.diagnoses.principal.name, 'an unresolved diagnosis conflict must not silently overwrite the Episode value');
 assert.equal(mapped.inpatient.principalDiagnosis.code, 'K80.3');
-assert.equal(mapped.patient.currentAddress, '入院记录地址');
+assert.ok(mapped.factConflicts.some((conflict) => conflict.concept === 'diagnosis.principal.name'), 'conflicting diagnosis sources remain visible for explicit review');
+assert.equal(mapped.patient.currentAddress, episode.patient.currentAddress, 'an unresolved address conflict must not silently overwrite the Episode value');
+assert.ok(mapped.factConflicts.some((conflict) => conflict.concept === 'patient.currentAddress'));
 assert.equal(mapped.fieldSources['patient.name'], '手动修改');
-assert.equal(mapped.fieldSources['inpatient.principalDiagnosis.name'], '住院病案首页');
-assert.equal(mapped.fieldSources['patient.currentAddress'], '入院记录');
+assert.equal(mapped.fieldSources['inpatient.principalDiagnosis.name'], 'Episode 基线');
+assert.equal(mapped.fieldSources['patient.currentAddress'], 'Episode 基线');
 assert.equal(mapped.fees.totals.amount, 19940);
 assert.equal(episode.patient.name, '李**', 'mapping must not mutate the source Episode');
 const withMultipleExamItems = structuredClone(episode);
