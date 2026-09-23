@@ -1,4 +1,5 @@
 import { getDrg3DiagnosisSupport } from './p1/drg-input-validator.js';
+import { isGoldenEpisode } from './p1/patient-integrity.js';
 
 let applying = false;
 function paymentMethod() {
@@ -15,7 +16,7 @@ function fixStatusBadges(root = document) {
 }
 function fixSyntheticLabel(root = document) {
   const episode = window.medicalSystemMvp?.getEpisodeContext?.()?.episode;
-  if (!episode || episode.goldenData || episode.datasetId || episode.datasetVersion) return;
+  if (!episode || isGoldenEpisode(episode)) return;
   root.querySelectorAll('.status-badge').forEach((badge) => {
     if ((badge.textContent || '').trim() === 'Golden 合成测试 Episode') badge.textContent = episode.synthetic ? '合成测试 Episode' : '当前 Episode';
   });

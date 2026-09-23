@@ -5,14 +5,32 @@ const clone = (x) => typeof structuredClone === 'function' ? structuredClone(x) 
 const norm = (x) => String(x ?? '').replace(/[\s：:（）()\[\]【】_\-]/g, '').toLowerCase();
 function valueByAliases(facts, aliases){const wanted=aliases.map(norm);let row=facts.find((x)=>wanted.includes(norm(x.keyName)));if(!row)row=facts.find((x)=>wanted.some((a)=>norm(x.keyName).includes(a)));const v=row?.keyValue;return typeof v==='object'?String(v?.value??v?.code??'').trim():String(v??'').trim();}
 
-export function readSavedDocumentSnapshots(episodeId, storage = globalThis.localStorage){
+export function readSavedDocumentSnapshots(episodeId, storage = globalThis.localStorage, patientId = null){
   if(!storage || !episodeId) return [];
   const out=[];
   for(const t of DOCUMENT_TEMPLATES){
     const key=`medical-system:document:${episodeId}:${t.id}`;
-    try{const raw=storage.getItem(key);if(!raw)continue;const record=JSON.parse(raw);if(record?.snapshot)out.push({templateId:t.id,templateName:t.name,status:record.status,savedAt:record.savedAt,version:record.version||record.savedAt,snapshot:record.snapshot});}catch{}
+    try{const raw=storage.getItem(key);if(!raw)continue;const record=JSON.parse(raw);if(record?.snapshot&&(!record.episodeId||record.episodeId===episodeId)&&(!record.patientId||!patientId||record.patientId===patientId))out.push({templateId:t.id,templateName:t.name,episodeId,patientId:record.patientId||patientId||null,status:record.status,savedAt:record.savedAt,version:record.version||record.savedAt,snapshot:record.snapshot});}catch{}
   }
   return out.sort((a,b)=>String(a.savedAt||'').localeCompare(String(b.savedAt||'')));
+}
+
+export function readPatientDocumentSnapshots(episode, storage = globalThis.localStorage){
+  if(!episode?.episodeId)return [];
+  const saved=readSavedDocumentSnapshots(episode.episodeId,storage,episode.patient?.patientId).map((doc)=>({...doc,fixtureSource:false}));
+  const savedIds=new Set(saved.map((doc)=>doc.templateId));
+  const fixtures=(episode.goldenData?.documents||[]).filter((doc)=>!savedIds.has(doc.templateId)).map((doc)=>({
+    templateId:doc.templateId,templateName:doc.name,episodeId:episode.episodeId,patientId:episode.patient?.patientId||null,
+    status:doc.status,version:episode.datasetVersion||'golden',fixtureSource:true,snapshot:{text:doc.text,data:[]},
+  }));
+  return [...fixtures,...saved];
+}
+
+export function preparePatientCase(episode, storage = globalThis.localStorage){
+  if(!episode?.episodeId)return null;
+  const docs=readPatientDocumentSnapshots(episode,storage);
+  const facts=extractClinicalFactsFromDocuments(docs);
+  return {episode:applyDocumentFacts(episode,facts),docs,facts};
 }
 
 export function extractClinicalFactsFromDocuments(records=[]){
@@ -54,6 +72,13 @@ export function applyPatientContext(baseEpisode, context={}){
 
 function confirmedValue(context, concept){return context?.facts?.find((x)=>x.concept===concept&&x.status==='CONFIRMED')?.value;}
 
+function inputSourceFor(episode,concept){
+  const fact=episode?.clinicalFactContext?.facts?.find((item)=>item.concept===concept)||null;
+  if(!fact)return {sourceType:'UNMAPPED',status:'MISSING',factId:null,evidenceRefs:[]};
+  const evidence=episode.clinicalFactContext.evidence.find((item)=>item.evidenceId===fact.selectedEvidenceId)||null;
+  return {sourceType:evidence?.sourceType||fact.sourceClass||'UNMAPPED',sourceName:evidence?.fieldName||evidence?.metadata?.templateName||evidence?.sourceId||'',status:fact.status,factId:fact.factId,evidenceRefs:fact.evidenceIds||[]};
+}
+
 export function applyDocumentFacts(episode, facts={}){
   const e=clone(episode);const records=facts.sourceRecords||[];const context=buildClinicalFactContext({episode:e,documentSnapshots:records});
   const dxCode=confirmedValue(context,'diagnosis.principal.code'),dxName=confirmedValue(context,'diagnosis.principal.name');
@@ -68,11 +93,41 @@ export function applyDocumentFacts(episode, facts={}){
 
 export function defaultClaimDetailsFromEpisode(episode){const admissionDate=String(episode?.admission?.at||'').slice(0,10);return(episode?.fees?.items||[]).map((x,i)=>({id:`CLAIM-${i+1}`,category:x.category||'other',itemCode:x.itemCode||'',itemName:x.name||`费用项目${i+1}`,billingTime:x.billingTime||`${admissionDate}T12:00:00+08:00`,quantity:Number(x.quantity??x.qty??1),unitPrice:Number(x.unitPrice??x.amount??0),amount:Number(x.amount??0),classA:Number(x.classA??0),classB:Number(x.classB??0),selfPay:Number(x.selfPay??0),other:Number(x.other??0),aggregateSource:!(x.itemCode||x.serviceCode)}));}
 
-export function workspaceFromEpisode(episode,{policyProfileId='WH-DRG-3.0',claimDetails=null}={}){const p=episode?.procedures||[];return {episodeId:episode.episodeId,policyProfileId,patient:{sex:episode.patient?.sex||'',age:Number(episode.patient?.age||0),birthDate:episode.patient?.birthDate||'',newbornWeight:episode.patient?.newbornWeight??null,ageInDays:episode.patient?.ageInDays??null},principalDiagnosis:{...(episode.diagnoses?.principal||{})},secondaryDiagnoses:(episode.diagnoses?.secondary||[]).map((x)=>({...x})),principalProcedure:p[0]?{...p[0]}:{code:'',name:''},otherProcedures:p.slice(1).map((x)=>({...x})),clinicalFactors:{lengthOfStay:null,icuHours:Number(episode.clinicalProcess?.icuHours||0),ventilatorHours:Number(episode.clinicalProcess?.ventilatorHours||0)},claimDetails:claimDetails||defaultClaimDetailsFromEpisode(episode),localPaymentParameters:{weight:'',rate:'',score:'',pointValue:'',adjustment:1},confirmedMappings:[],preGroupingRun:null,formalGroupingRun:null,auditRun:null,reviewLog:[],revision:1,updatedAt:new Date().toISOString()};}
+export function workspaceFromEpisode(episode,{policyProfileId='WH-DRG-3.0',claimDetails=null}={}){
+  const procedures=episode?.procedures||[];
+  const context=episode?.clinicalFactContext||buildClinicalFactContext({episode,documentSnapshots:episode?.documentSnapshots||[]});
+  const inputSources={
+    'patient.sex':inputSourceFor({...episode,clinicalFactContext:context},'patient.sex'),
+    'patient.age':inputSourceFor({...episode,clinicalFactContext:context},'patient.age'),
+    'diagnosis.principal.code':inputSourceFor({...episode,clinicalFactContext:context},'diagnosis.principal.code'),
+    'diagnosis.principal.name':inputSourceFor({...episode,clinicalFactContext:context},'diagnosis.principal.name'),
+    'procedure.primary.code':inputSourceFor({...episode,clinicalFactContext:context},'procedure.primary.code'),
+    'procedure.primary.name':inputSourceFor({...episode,clinicalFactContext:context},'procedure.primary.name'),
+  };
+  return {
+    episodeId:episode.episodeId,policyProfileId,
+    patient:{sex:context.projections?.grouping?.patient?.sex||'',age:context.projections?.grouping?.patient?.age==null?'':Number(context.projections.grouping.patient.age),birthDate:context.projections?.grouping?.patient?.birthDate||'',newbornWeight:episode.patient?.newbornWeight??null,ageInDays:episode.patient?.ageInDays??null},
+    principalDiagnosis:{...(context.projections?.grouping?.principalDiagnosis||{})},
+    secondaryDiagnoses:(episode.diagnoses?.secondary||[]).map((x)=>({...x})),
+    principalProcedure:{...(context.projections?.grouping?.principalProcedure||{})},
+    otherProcedures:procedures.slice(1).map((x)=>({...x})),groupingInputSources:inputSources,
+    clinicalFactors:{lengthOfStay:null,icuHours:Number(episode.clinicalProcess?.icuHours||0),ventilatorHours:Number(episode.clinicalProcess?.ventilatorHours||0)},
+    claimDetails:claimDetails||defaultClaimDetailsFromEpisode(episode),localPaymentParameters:{weight:'',rate:'',score:'',pointValue:'',adjustment:1},
+    confirmedMappings:[],preGroupingRun:null,formalGroupingRun:null,auditRun:null,reviewLog:[],revision:1,updatedAt:new Date().toISOString(),
+  };
+}
 
 export function episodeFromWorkspace(baseEpisode, workspace){
-  const e=clone(baseEpisode);e.patient={...e.patient,sex:workspace.patient?.sex||e.patient.sex,age:Number(workspace.patient?.age??e.patient.age),newbornWeight:workspace.patient?.newbornWeight??null,ageInDays:workspace.patient?.ageInDays??null};e.diagnoses={...e.diagnoses,principal:{...workspace.principalDiagnosis},secondary:(workspace.secondaryDiagnoses||[]).map((x)=>({...x}))};
-  const baseProc=e.procedures?.[0]||{};const p0=workspace.principalProcedure?.code||workspace.principalProcedure?.name?{...baseProc,...workspace.principalProcedure,role:'primary'}:null;const others=(workspace.otherProcedures||[]).filter((x)=>x.code||x.name).map((x,i)=>({id:x.id||`OP-${i+2}`,...x,role:'other'}));e.procedures=[...(p0?[p0]:[]),...others];
+  const e=clone(baseEpisode);const conflicted=(path)=>workspace.groupingInputSources?.[path]?.status==='CONFLICTED';
+  e.patient={...e.patient,sex:conflicted('patient.sex')?baseEpisode.patient?.sex:workspace.patient?.sex||'',age:conflicted('patient.age')?baseEpisode.patient?.age:workspace.patient?.age===''?null:Number(workspace.patient?.age??NaN),newbornWeight:workspace.patient?.newbornWeight??null,ageInDays:workspace.patient?.ageInDays??null};
+  const originalDiagnosis=baseEpisode.diagnoses?.principal||{};const principal={...(workspace.principalDiagnosis||{})};
+  if(conflicted('diagnosis.principal.code'))principal.code=originalDiagnosis.code||'';
+  if(conflicted('diagnosis.principal.name'))principal.name=originalDiagnosis.name||'';
+  e.diagnoses={...e.diagnoses,principal:principal.code||principal.name?principal:null,secondary:(workspace.secondaryDiagnoses||[]).map((x)=>({...x}))};
+  const baseProc=e.procedures?.[0]||{},principalProcedure={...(workspace.principalProcedure||{})};
+  if(conflicted('procedure.primary.code'))principalProcedure.code=baseProc.code||'';
+  if(conflicted('procedure.primary.name'))principalProcedure.name=baseProc.name||'';
+  const p0=principalProcedure.code||principalProcedure.name?{...baseProc,...principalProcedure,role:'primary'}:null;const others=(workspace.otherProcedures||[]).filter((x)=>x.code||x.name).map((x,i)=>({id:x.id||`OP-${i+2}`,...x,role:'other'}));e.procedures=[...(p0?[p0]:[]),...others];
   e.clinicalProcess={...e.clinicalProcess,icuHours:Number(workspace.clinicalFactors?.icuHours||0),ventilatorHours:Number(workspace.clinicalFactors?.ventilatorHours||0)};e.fees={...e.fees,items:(workspace.claimDetails||[]).map((x)=>({category:x.category||'other',name:x.itemName,itemCode:x.itemCode,billingTime:x.billingTime,quantity:Number(x.quantity||0),unitPrice:Number(x.unitPrice||0),amount:Number(x.amount||0),classA:Number(x.classA||0),classB:Number(x.classB||0),selfPay:Number(x.selfPay||0),other:Number(x.other||0),aggregateSource:Boolean(x.aggregateSource)}))};
-  const records=e.documentSnapshots||baseEpisode.documentSnapshots||[];e.documentSnapshots=records;e.clinicalFactContext=buildClinicalFactContext({episode:e,documentSnapshots:records});return e;
+  const records=e.documentSnapshots||baseEpisode.documentSnapshots||[];e.documentSnapshots=records;e.groupingInputSources=workspace.groupingInputSources||{};e.clinicalFactContext=buildClinicalFactContext({episode:e,documentSnapshots:records});return e;
 }

@@ -111,22 +111,33 @@ function dateParts(raw) {
 }
 
 export function normalizeMappedValue(concept, value) {
+  const valueType=MAPPING_BY_CONCEPT[concept]?.valueType||(
+    concept==='patient.birthDate'?'date':concept.endsWith('.at')?'datetime':concept==='patient.sex'?'sex':concept==='patient.age'?'age':concept.endsWith('.code')?'code':'string'
+  );
+  return normalizeCanonicalValue(valueType,value);
+}
+
+export function normalizeCanonicalValue(type, value) {
   if (value && typeof value === 'object') value = value.value ?? value.code ?? value.text ?? '';
-  const raw = String(value ?? '').trim();
-  if (concept === 'patient.age') {
-    const m = raw.match(/-?\d+(?:\.\d+)?/);
-    return m ? Number(m[0]) : null;
+  const raw=String(value??'').trim();
+  if(type==='date')return dateParts(raw)?.date||raw;
+  if(type==='datetime'){
+    const parts=dateParts(raw),date=new Date(parts?.instant||raw);
+    return Number.isFinite(date.getTime())?date.toISOString():raw;
   }
-  if (concept === 'patient.sex') {
-    if (['1', '男'].includes(raw)) return '男';
-    if (['2', '女'].includes(raw)) return '女';
+  if(type==='sex'){
+    if(['1','男'].includes(raw))return '男';
+    if(['2','女'].includes(raw))return '女';
     return raw;
   }
-  if (concept === 'patient.birthDate') return dateParts(raw)?.date || raw;
-  if (concept.endsWith('.at')) {
-    const parts = dateParts(raw);
-    const d = new Date(parts?.instant || raw);
-    return Number.isFinite(d.getTime()) ? d.toISOString() : raw;
+  if(type==='age'){
+    const match=raw.match(/-?\d+(?:\.\d+)?/);
+    return match?Number(match[0]):null;
   }
+  if(type==='number'){
+    const number=Number(raw.normalize('NFKC').replaceAll(',',''));
+    return Number.isFinite(number)?number:raw;
+  }
+  if(type==='code')return raw.normalize('NFKC').replace(/\s+/g,'');
   return raw;
 }

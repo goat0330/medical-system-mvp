@@ -1,4 +1,4 @@
-import { readSavedDocumentSnapshots } from './p1/current-case-adapter.js';
+import { preparePatientCase } from './p1/current-case-adapter.js';
 import { buildWorkspaceSourceFingerprint, reconcileStoredWorkspace } from './p1/workspace-integrity.js';
 import { normalizeSyntheticPatientEpisode } from './p1/patient-integrity.js';
 
@@ -7,8 +7,9 @@ const STATE_KEY = '__medicalSystemIntegrityState';
 function synchronizeCurrentPatient(api) {
   const context = api?.getEpisodeContext?.(); const episode = context?.episode; if (!episode?.episodeId) return null;
   const normalized = normalizeSyntheticPatientEpisode(episode);
-  const documents = readSavedDocumentSnapshots(episode.episodeId);
-  const sourceFingerprint = buildWorkspaceSourceFingerprint({ episode, documentSnapshots: documents });
+  const patientCase = preparePatientCase(episode);
+  const sourceEpisode = patientCase?.episode || episode;
+  const sourceFingerprint = buildWorkspaceSourceFingerprint({ episode: sourceEpisode, documentSnapshots: patientCase?.docs || [], clinicalFactContext: sourceEpisode.clinicalFactContext });
   const workspace = reconcileStoredWorkspace({ episodeId: episode.episodeId, sourceFingerprint });
   const state = { episodeId: episode.episodeId, sourceFingerprint, normalizedSyntheticIdentity: normalized.changed, workspace, at: new Date().toISOString() };
   window[STATE_KEY] = state;

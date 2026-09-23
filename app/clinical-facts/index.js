@@ -52,14 +52,14 @@ export function clearFactDecision(episodeId, concept, storage = safeStorage()) {
 
 export function buildClinicalFactContext({ episode, documentSnapshots = [], decisions = null } = {}) {
   if (!episode?.episodeId) throw new Error('episodeId is required to build clinical fact context');
-  const chosenDecisions = decisions || loadFactDecisions(episode.episodeId);
+  const chosenDecisions = (decisions || loadFactDecisions(episode.episodeId)).filter((item) => item.episodeId === episode.episodeId);
   const evidence = [
     ...evidenceFromEpisode(episode),
     ...evidenceFromDocumentSnapshots(episode, documentSnapshots),
     ...evidenceFromHis(episode),
     ...evidenceFromLis(episode),
     ...evidenceFromRis(episode),
-  ];
+  ].filter((item) => item.episodeId === episode.episodeId && (!item.patientId || !episode.patient?.patientId || item.patientId === episode.patient.patientId));
   const facts = resolveClinicalFacts({ episodeId: episode.episodeId, evidence, decisions: chosenDecisions });
   const conflicts = detectFactConflicts({ episodeId: episode.episodeId, evidence, facts });
   const revisionSeed = JSON.stringify({

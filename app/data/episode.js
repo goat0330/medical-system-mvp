@@ -145,5 +145,6 @@ export function lengthOfStay(episode) {
   const endDate = String(episode.discharge.at || "").slice(0, 10);
   const start = new Date(`${startDate}T00:00:00Z`);
   const end = new Date(`${endDate}T00:00:00Z`);
+  if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime())) return null;
   return Math.max(1, Math.round((end - start) / 86400000));
 }

@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 
 const factsUi=readFileSync(new URL('../app/clinical-facts-overlay.js',import.meta.url),'utf8');
 const qualityUi=readFileSync(new URL('../app/full-chain-qc-overlay.js',import.meta.url),'utf8');
+const groupingPresentation=readFileSync(new URL('../app/p1/grouping-presentation.js',import.meta.url),'utf8');
 const groupingFactsRender=factsUi.slice(factsUi.indexOf('function renderGroupingFacts'),factsUi.indexOf('function conflictHtml'));
 
 assert.match(factsUi,/function renderGroupingFacts\(context\)/);
@@ -10,7 +11,8 @@ assert.match(factsUi,/context\.evidence\.filter\(\(item\)=>evidenceIds\.has\(ite
 assert.match(factsUi,/item\.impactScope\?\.includes\('GROUPING'\)/);
 assert.match(factsUi,/查看分组字段来源/);
 assert.doesNotMatch(groupingFactsRender,/ClinicalFact|context\.evidence\.length|fact-revision/);
-assert.match(qualityUi,/issue\.impactScope\?\.includes\('GROUPING'\)/);
+assert.match(qualityUi,/filterGroupingQualityIssues\(run\.issues\)/);
+assert.match(groupingPresentation,/issue\.qcDomain === 'GROUPING' \|\| issue\.impactScope\?\.includes\('GROUPING'\)/);
 assert.match(qualityUi,/查看全流程质控（6 个环节/);
 assert.doesNotMatch(qualityUi,/run\.summary\.blocking\?'open'/);
 

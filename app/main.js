@@ -1,5 +1,5 @@
-import { createEpisodeFixture } from './data/episode.js';
 import { createGoldenEpisode, loadGoldenPatientBundle } from './data/golden-patient.js';
+import { createPatientWorklist } from './data/patient-episodes.js';
 import { DOCUMENT_TEMPLATES, groupedTemplates, getDocumentTemplate } from './data/templates.js';
 import { loadDocumentSnapshot, mountMedicalRecordEditor, runDocumentQc, saveDocumentSnapshot } from './domain/medical-record-editor.js';
 import { buildSettlementList, getSettlementValue, recalculateSettlementTotals, SETTLEMENT_SOURCE_FIELDS, setSettlementValue, validateSettlementList } from './domain/settlement.js';
@@ -24,43 +24,11 @@ const NAV_ITEMS = [
   { id: 'audit', icon: 'audit', label: '智能医保审核' },
 ];
 
-const baseEpisode = createEpisodeFixture();
 const goldenBundle = location.origin ? await loadGoldenPatientBundle() : null;
 const initialAiModels = await listAiModels().catch(() => []);
 const query = new URLSearchParams(location.search);
 const initialTemplateId = query.get('view') === 'frontpage' ? 'frontpage' : getDocumentTemplate(query.get('template') || 'admission').id;
-const patientSpecs = [
-  { key: 'p-12', bed: '12床', name: '虚构患者甲', sex: '男', age: 43, episodeId: 'EP-GOLDEN-001', department: '普通外科', status: 'Golden 样本', tone: 'blue', task: '全流程联调', golden: true },
-  { key: 'p-01', bed: '01床', name: '王某某', sex: '男', age: 62, episodeId: 'EP-DEMO-002', department: '普通外科', status: '新入院', tone: 'blue', task: '待完成文书 4' },
-  { key: 'p-03', bed: '03床', name: '李某某', sex: '女', age: 47, episodeId: 'EP-DEMO-003', department: '普通外科', status: '有待办', tone: 'amber', task: '质控问题 1' },
-  { key: 'p-08', bed: '08床', name: '陈某某', sex: '男', age: 55, episodeId: 'EP-DEMO-004', department: '普通外科', status: '住院中', tone: 'gray', task: '待完成文书 1' },
-  { key: 'p-16', bed: '16床', name: '赵某某', sex: '女', age: 71, episodeId: 'EP-DEMO-005', department: '普通外科', status: '今日出院', tone: 'green', task: '待确认出院记录' },
-  { key: 'p-18', bed: '18床', name: '周某某', sex: '男', age: 36, episodeId: 'EP-DEMO-006', department: '普通外科', status: '住院中', tone: 'gray', task: '暂无待办' },
-];
-const cloneEpisode = (source) => typeof structuredClone === 'function' ? structuredClone(source) : JSON.parse(JSON.stringify(source));
-const patientWorklist = patientSpecs.map((spec) => {
-  const value = spec.golden ? createGoldenEpisode() : cloneEpisode(baseEpisode);
-  const serial = spec.episodeId.slice(-3);
-  if (spec.golden) {
-    value.patient = { ...value.patient, patientId: `P-GOLDEN-${serial}` };
-    value.medicalRecordNumber = `BA-GOLDEN-${serial}`;
-    value.claimSerialNumber = `JSQD-GOLDEN-${serial}`;
-    value.insurance = { ...value.insurance, number: `HB-WH-GOLDEN-${serial}` };
-    value.goldenData = goldenBundle;
-  } else {
-    value.patient = { ...value.patient, patientId: `P-DEMO-${serial}`, name: spec.name, sex: spec.sex, age: spec.age };
-    value.medicalRecordNumber = `BA-DEMO-${serial}`;
-    value.claimSerialNumber = `JSQD-DEMO-${serial}`;
-    value.fees = { ...value.fees, businessSerialNumber: `FY-DEMO-${serial}`, invoiceNumber: `INV-DEMO-${serial}` };
-  }
-  value.inpatientNumber = spec.episodeId;
-  value.inpatientNo = spec.episodeId;
-  value.inpatientId = spec.episodeId;
-  value.episodeId = spec.episodeId;
-  value.admission = { ...value.admission, department: spec.department, bed: spec.bed.replace('床', '') };
-  if (spec.golden) value.fees = { ...value.fees, businessSerialNumber: `FY-GOLDEN-${serial}`, invoiceNumber: `INV-GOLDEN-${serial}` };
-  return { ...spec, episode: value };
-});
+const patientWorklist = createPatientWorklist({ goldenEpisode: createGoldenEpisode(), goldenBundle });
 let episode = patientWorklist[0].episode;
 const state = {
   view: query.get('view') || 'overview',
@@ -107,7 +75,7 @@ const diagnosisList = () => [episode.diagnoses?.principal, ...asArray(episode.di
 const chargeList = () => asArray(first(episode.fees?.items, episode.charges, episode.costs?.items));
 const totalAmount = () => chargeList().reduce((sum, item) => sum + Number(item.amount || 0), 0);
 const episodeTitle = () => first(patient().name, '合成病例 A-001');
-const episodeId = () => first(episode.inpatientNumber, episode.inpatientNo, episode.episodeId, 'EP-DEMO-001');
+const episodeId = () => first(episode.inpatientNumber, episode.inpatientNo, episode.episodeId, '');
 const currentTemplate = () => getDocumentTemplate(state.templateId);
 const currentEditorTemplate = () => state.view === 'settlement' ? settlementEditorTemplate() : currentTemplate();
 const currentPatientEntry = () => patientWorklist.find((item) => item.key === state.selectedPatientKey) || patientWorklist[0];

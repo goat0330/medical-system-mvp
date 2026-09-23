@@ -10,10 +10,10 @@ function stable(value) {
 function hashText(text) { let h = 2166136261; for (let i = 0; i < text.length; i += 1) h = Math.imul(h ^ text.charCodeAt(i), 16777619); return (h >>> 0).toString(16).padStart(8, '0'); }
 function valueOf(v) { if (v && typeof v === 'object') return v.value ?? v.code ?? v.text ?? ''; return v ?? ''; }
 
-export function buildWorkspaceSourceFingerprint({ episode, documentSnapshots = [] } = {}) {
+export function buildWorkspaceSourceFingerprint({ episode, documentSnapshots = [], clinicalFactContext = episode?.clinicalFactContext } = {}) {
   const payload = {
     episodeId: episode?.episodeId,
-    patient: { sex: episode?.patient?.sex, age: episode?.patient?.age, birthDate: episode?.patient?.birthDate },
+    patient: { patientId: episode?.patient?.patientId, sex: episode?.patient?.sex, age: episode?.patient?.age, birthDate: episode?.patient?.birthDate },
     diagnosis: {
       principal: episode?.diagnoses?.principal,
       secondary: (episode?.diagnoses?.secondary || []).map((x) => ({ code: x.code, name: x.name })),
@@ -21,9 +21,25 @@ export function buildWorkspaceSourceFingerprint({ episode, documentSnapshots = [
     procedures: (episode?.procedures || []).map((x) => ({ code: x.code, name: x.name, role: x.role })),
     admissionAt: episode?.admission?.at,
     dischargeAt: episode?.discharge?.at,
+    insurance: episode?.insurance,
+    payment: episode?.payment,
+    clinicalProcess: episode?.clinicalProcess,
+    fees: episode?.fees,
+    evidence: (clinicalFactContext?.evidence || episode?.evidence || []).map((item) => ({
+      evidenceId: item.evidenceId, episodeId: item.episodeId, patientId: item.patientId,
+      sourceVersion: item.sourceVersion, eventTime: item.eventTime, value: item.value,
+    })),
+    clinicalSources: episode?.goldenData?.clinical || null,
+    billingSources: episode?.goldenData?.billing || null,
+    factRevision: clinicalFactContext?.revision || null,
+    factDecisions: (clinicalFactContext?.decisions || []).map((decision) => ({
+      episodeId: decision.episodeId, concept: decision.concept, selectedEvidenceId: decision.selectedEvidenceId,
+      selectedValue: decision.selectedValue, decidedAt: decision.decidedAt,
+    })),
     documents: documentSnapshots.map((doc) => ({
-      templateId: doc.templateId, savedAt: doc.savedAt, status: doc.status,
+      episodeId: doc.episodeId, patientId: doc.patientId, templateId: doc.templateId, version: doc.version, savedAt: doc.savedAt, status: doc.status,
       data: (doc.snapshot?.data || []).map((field) => [field.keyCode, field.keyName, valueOf(field.keyValue)]),
+      text: doc.snapshot?.text || doc.text || '',
     })),
   };
   return `SRC-${hashText(JSON.stringify(stable(payload)))}`;

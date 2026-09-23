@@ -34,7 +34,7 @@ const value = (v, path = "", label = "") => {
   return `<span class="new-textbox sheet-value" contenteditable="false" data-hm-id="${e(id)}" data-hm-name="${e(name)}" data-hm-code="${e(settlementFieldCode(path))}" data-hm-node="newtextbox" data-settlement-path="${e(path)}"${optionAttrs}><span class="new-textbox-content" contenteditable="true"${optionAttrs}>${e(display)}</span></span>`;
 };
 function diagnosisRows(list) {
-  const rows = [list.inpatient.principalDiagnosis, ...list.inpatient.secondaryDiagnoses];
+  const rows = [list.inpatient.principalDiagnosis || {}, ...list.inpatient.secondaryDiagnoses];
   const padded = [...rows];
   while (padded.length < 6) padded.push({ name: "", code: "", conditionAtAdmission: "" });
   return padded.map((dx, i) => `<tr>
@@ -47,7 +47,7 @@ function diagnosisRows(list) {
 }
 
 function procedureRows(list) {
-  const rows = [list.procedures.primary, ...list.procedures.others];
+  const rows = [list.procedures.primary || {}, ...list.procedures.others.map((operation) => operation || {})];
   const padded = [...rows];
   while (padded.length < 4) padded.push({});
   return padded.map((op, i) => `<tr>
@@ -67,6 +67,8 @@ export function renderSettlementPaper(list) {
   const ip = list.inpatient;
   const fee = list.fees;
   const pay = list.payment;
+  const hasFeeSource = fee.rows.some((row) => row.source === "HIS费用明细");
+  const moneyValue = (amount, path, hasSource = true) => value(hasSource && amount != null ? formatMoney(amount) : "", path);
   return `<body contenteditable="true" style="margin:0;padding:18px;background:var(--app-editor-canvas);font-family:var(--app-font-family);font-size:12px;line-height:1.5"><div class="settlement-paper-stack">
     <section class="settlement-sheet">
       <div class="sheet-attachment">附件 1：</div>
@@ -126,18 +128,18 @@ export function renderSettlementPaper(list) {
         <div>结算开始日期 ${value(fee.settlementStart,"fees.settlementStart")}　结算结束日期 ${value(fee.settlementEnd,"fees.settlementEnd")}</div>
       </div>
       <table class="sheet-table fee-table"><thead><tr><th>项目名称</th><th>金额</th><th>甲类</th><th>乙类</th><th>自费</th><th>其他</th></tr></thead><tbody>
-        ${fee.rows.map((r,i)=>`<tr><td>${e(r.label)}</td><td>${value(formatMoney(r.amount),`fees.rows.${i}.amount`)}</td><td>${value(formatMoney(r.classA),`fees.rows.${i}.classA`)}</td><td>${value(formatMoney(r.classB),`fees.rows.${i}.classB`)}</td><td>${value(formatMoney(r.selfPay),`fees.rows.${i}.selfPay`)}</td><td>${value(formatMoney(r.other),`fees.rows.${i}.other`)}</td></tr>`).join("")}
-        <tr class="total-row"><td>金额合计</td><td class="settlement-total--amount" data-settlement-total="amount">${formatMoney(fee.totals.amount)}</td><td class="settlement-total--classA" data-settlement-total="classA">${formatMoney(fee.totals.classA)}</td><td class="settlement-total--classB" data-settlement-total="classB">${formatMoney(fee.totals.classB)}</td><td class="settlement-total--selfPay" data-settlement-total="selfPay">${formatMoney(fee.totals.selfPay)}</td><td class="settlement-total--other" data-settlement-total="other">${formatMoney(fee.totals.other)}</td></tr>
+        ${fee.rows.map((r,i)=>`<tr><td>${e(r.label)}</td><td>${moneyValue(r.amount,`fees.rows.${i}.amount`,r.source==="HIS费用明细")}</td><td>${moneyValue(r.classA,`fees.rows.${i}.classA`,r.source==="HIS费用明细")}</td><td>${moneyValue(r.classB,`fees.rows.${i}.classB`,r.source==="HIS费用明细")}</td><td>${moneyValue(r.selfPay,`fees.rows.${i}.selfPay`,r.source==="HIS费用明细")}</td><td>${moneyValue(r.other,`fees.rows.${i}.other`,r.source==="HIS费用明细")}</td></tr>`).join("")}
+        <tr class="total-row"><td>金额合计</td><td class="settlement-total--amount" data-settlement-total="amount">${hasFeeSource?formatMoney(fee.totals.amount):""}</td><td class="settlement-total--classA" data-settlement-total="classA">${hasFeeSource?formatMoney(fee.totals.classA):""}</td><td class="settlement-total--classB" data-settlement-total="classB">${hasFeeSource?formatMoney(fee.totals.classB):""}</td><td class="settlement-total--selfPay" data-settlement-total="selfPay">${hasFeeSource?formatMoney(fee.totals.selfPay):""}</td><td class="settlement-total--other" data-settlement-total="other">${hasFeeSource?formatMoney(fee.totals.other):""}</td></tr>
       </tbody></table>
       <table class="sheet-table payment-table"><tbody>
-        <tr class="payment-first-row"><th colspan="2" class="payment-major-label">医保统筹基金支付</th><td class="payment-left-amount">${value(formatMoney(pay.fund),"payment.fund")}</td><th rowspan="5" class="payment-parent-label">个人负担</th><th rowspan="3" class="payment-personal-label">个人自付</th><td rowspan="3" class="payment-personal-value">${value(formatMoney(pay.individualSelfPay),"payment.individualSelfPay")}</td></tr>
-        <tr><th rowspan="3" class="payment-major-label payment-left-group">补充医疗保险支付</th><th class="payment-left-subcategory">职工大额补助</th><td class="payment-left-amount">${value(formatMoney(pay.employeeLargeAmount),"payment.employeeLargeAmount")}</td></tr>
-        <tr><th class="payment-left-subcategory">居民大病保险</th><td class="payment-left-amount">${value(formatMoney(pay.residentCriticalIllness),"payment.residentCriticalIllness")}</td></tr>
-        <tr><th class="payment-left-subcategory">公务员医疗补助</th><td class="payment-left-amount">${value(formatMoney(pay.civilServant),"payment.civilServant")}</td><th rowspan="2" class="payment-personal-label">个人自费</th><td rowspan="2" class="payment-personal-value">${value(pay.individualSelfExpense ?? "","payment.individualSelfExpense")}</td></tr>
-        <tr class="payment-group-end"><th colspan="2" class="payment-major-label">医疗救助支付</th><td class="payment-left-amount">${value(formatMoney(pay.medicalAssistance),"payment.medicalAssistance")}</td></tr>
-        <tr class="payment-group-start"><th rowspan="3" class="payment-major-label payment-left-group">其他支付</th><th class="payment-left-subcategory">企业补充</th><td class="payment-left-amount">${value(formatMoney(pay.enterpriseSupplemental),"payment.enterpriseSupplemental")}</td><th rowspan="3" class="payment-parent-label">个人支付</th><th rowspan="2" class="payment-personal-label">个人账户<br>支付</th><td rowspan="2" class="payment-personal-value">${value(formatMoney(pay.individualAccount),"payment.individualAccount")}</td></tr>
-        <tr><th class="payment-left-subcategory">商业保险</th><td class="payment-left-amount">${value(formatMoney(pay.commercial),"payment.commercial")}</td></tr>
-        <tr><th class="payment-left-subcategory">……</th><td class="payment-left-amount">${value(formatMoney(pay.other),"payment.other")}</td><th class="payment-personal-label">个人现金<br>支付</th><td class="payment-personal-value">${value(formatMoney(pay.individualCash),"payment.individualCash")}</td></tr>
+        <tr class="payment-first-row"><th colspan="2" class="payment-major-label">医保统筹基金支付</th><td class="payment-left-amount">${moneyValue(pay.fund,"payment.fund")}</td><th rowspan="5" class="payment-parent-label">个人负担</th><th rowspan="3" class="payment-personal-label">个人自付</th><td rowspan="3" class="payment-personal-value">${moneyValue(pay.individualSelfPay,"payment.individualSelfPay")}</td></tr>
+        <tr><th rowspan="3" class="payment-major-label payment-left-group">补充医疗保险支付</th><th class="payment-left-subcategory">职工大额补助</th><td class="payment-left-amount">${moneyValue(pay.employeeLargeAmount,"payment.employeeLargeAmount")}</td></tr>
+        <tr><th class="payment-left-subcategory">居民大病保险</th><td class="payment-left-amount">${moneyValue(pay.residentCriticalIllness,"payment.residentCriticalIllness")}</td></tr>
+        <tr><th class="payment-left-subcategory">公务员医疗补助</th><td class="payment-left-amount">${moneyValue(pay.civilServant,"payment.civilServant")}</td><th rowspan="2" class="payment-personal-label">个人自费</th><td rowspan="2" class="payment-personal-value">${moneyValue(pay.individualSelfExpense,"payment.individualSelfExpense")}</td></tr>
+        <tr class="payment-group-end"><th colspan="2" class="payment-major-label">医疗救助支付</th><td class="payment-left-amount">${moneyValue(pay.medicalAssistance,"payment.medicalAssistance")}</td></tr>
+        <tr class="payment-group-start"><th rowspan="3" class="payment-major-label payment-left-group">其他支付</th><th class="payment-left-subcategory">企业补充</th><td class="payment-left-amount">${moneyValue(pay.enterpriseSupplemental,"payment.enterpriseSupplemental")}</td><th rowspan="3" class="payment-parent-label">个人支付</th><th rowspan="2" class="payment-personal-label">个人账户<br>支付</th><td rowspan="2" class="payment-personal-value">${moneyValue(pay.individualAccount,"payment.individualAccount")}</td></tr>
+        <tr><th class="payment-left-subcategory">商业保险</th><td class="payment-left-amount">${moneyValue(pay.commercial,"payment.commercial")}</td></tr>
+        <tr><th class="payment-left-subcategory">……</th><td class="payment-left-amount">${moneyValue(pay.other,"payment.other")}</td><th class="payment-personal-label">个人现金<br>支付</th><td class="payment-personal-value">${moneyValue(pay.individualCash,"payment.individualCash")}</td></tr>
       </tbody></table>
       <div class="sheet-line sheet-choice-line">医保支付方式 ${value(pay.method,"payment.method")}</div>
       <table class="sheet-table"><tbody><tr><th>定点医疗机构填报部门</th><td>医保办</td><th>医保经办机构</th><td></td><th>代码</th><td></td></tr><tr><th>定点医疗机构填报人</th><td>演示用户</td><th>医保机构经办人</th><td></td><th>代码</th><td></td></tr></tbody></table>

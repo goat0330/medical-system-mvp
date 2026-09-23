@@ -206,7 +206,10 @@ export function loadDocumentSnapshot(template, episode) {
   if (typeof localStorage === "undefined") return null;
   try {
     const raw = localStorage.getItem(`medical-system:document:${episode.episodeId}:${template.id}`);
-    return raw ? JSON.parse(raw) : null;
+    const record = raw ? JSON.parse(raw) : null;
+    if (record?.episodeId && record.episodeId !== episode.episodeId) return null;
+    if (record?.patientId && episode.patient?.patientId && record.patientId !== episode.patient.patientId) return null;
+    return record;
   } catch {
     return null;
   }
@@ -458,6 +461,7 @@ export function saveDocumentSnapshot(template, episode, snapshot, status = "draf
     templateId: template.id,
     templateName: template.name,
     episodeId: episode.episodeId,
+    patientId: episode.patient?.patientId || null,
     status,
     savedAt: new Date().toISOString(),
     snapshot,

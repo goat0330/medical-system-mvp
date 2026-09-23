@@ -12,6 +12,7 @@ export function evidenceFromDocumentSnapshots(episode, records = []) {
   const patientId = episode?.patient?.patientId || null;
   const out = [];
   for (const [docIndex, record] of records.entries()) {
+    if ((record.episodeId && record.episodeId !== episodeId) || (record.patientId && patientId && record.patientId !== patientId)) continue;
     const templateId = record.templateId || record.id || `document-${docIndex + 1}`;
     const templateName = record.templateName || record.name || templateId;
     const sourceClass = sourceClassForDocument(templateId);

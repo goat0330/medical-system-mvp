@@ -1,15 +1,9 @@
 import { buildClinicalFactContext, saveFactDecision, clearFactDecision } from './clinical-facts/index.js';
 import { createFactDecision } from './clinical-facts/models/decision.js';
-import { readSavedDocumentSnapshots } from './p1/current-case-adapter.js';
+import { readPatientDocumentSnapshots } from './p1/current-case-adapter.js';
 
 const esc=(v)=>String(v??'').replace(/[&<>"']/g,(m)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 let applying=false;
-function documentsFor(episode){
-  const saved=readSavedDocumentSnapshots(episode.episodeId).map((x)=>({...x,fixtureSource:false}));
-  const ids=new Set(saved.map((x)=>x.templateId));
-  const fixtures=(episode.goldenData?.documents||[]).filter((x)=>!ids.has(x.templateId)).map((x)=>({templateId:x.templateId,templateName:x.name,status:x.status,fixtureSource:true,version:episode.datasetVersion||'golden',snapshot:{text:x.text,data:[]}}));
-  return [...fixtures,...saved];
-}
 function labelForConcept(c){return ({'patient.age':'年龄','patient.birthDate':'出生日期','patient.sex':'性别','diagnosis.principal.code':'主要诊断编码','diagnosis.principal.name':'主要诊断','procedure.primary.code':'主要手术/操作编码','procedure.primary.name':'主要手术/操作名称','admission.at':'入院时间','discharge.at':'出院时间'})[c]||c;}
 function sourceLabel(c){return [c.sourceDocumentType||c.sourceType,c.sourceVersion?`版本 ${c.sourceVersion}`:'',c.fieldName||''].filter(Boolean).join(' · ');}
 function keyFact(context,concept){return context.facts.find((x)=>x.concept===concept&&x.status==='CONFIRMED')||context.facts.find((x)=>x.concept===concept)||null;}
@@ -49,6 +43,6 @@ function apply(){
   if(applying)return;const content=document.querySelector('.page-content');if(!content||content.querySelector('[data-fact-platform-card]'))return;
   const header=[...document.querySelectorAll('h1,h2')].find((x)=>/DRG\s*\/\s*DIP 3\.0|智能医保审核|医疗保障基金结算清单/.test(x.textContent||''));if(!header)return;
   const episode=window.medicalSystemMvp?.getEpisodeContext?.()?.episode;if(!episode)return;
-  applying=true;try{const context=buildClinicalFactContext({episode,documentSnapshots:documentsFor(episode)});const groupingOnly=/DRG\s*\/\s*DIP 3\.0/.test(header.textContent||'');const html=groupingOnly?renderGroupingFacts(context):render(context);const anchor=content.querySelector('.op-source')||content.firstElementChild;if(anchor)anchor.insertAdjacentHTML('afterend',html);else content.insertAdjacentHTML('afterbegin',html);const root=content.querySelector('[data-fact-platform-card]');if(root)bind(root,episode.episodeId);}finally{applying=false;}
+  applying=true;try{const context=buildClinicalFactContext({episode,documentSnapshots:readPatientDocumentSnapshots(episode)});const groupingOnly=/DRG\s*\/\s*DIP 3\.0/.test(header.textContent||'');const html=groupingOnly?renderGroupingFacts(context):render(context);const anchor=content.querySelector('.op-source')||content.firstElementChild;if(anchor)anchor.insertAdjacentHTML('afterend',html);else content.insertAdjacentHTML('afterbegin',html);const root=content.querySelector('[data-fact-platform-card]');if(root)bind(root,episode.episodeId);}finally{applying=false;}
 }
 const observer=new MutationObserver(()=>queueMicrotask(apply));observer.observe(document.querySelector('#app'),{childList:true,subtree:true});window.addEventListener('load',apply);setTimeout(apply,0);

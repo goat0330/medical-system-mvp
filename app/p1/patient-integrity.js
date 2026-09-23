@@ -1,4 +1,5 @@
-export function isGoldenEpisode(episode) { return Boolean(episode?.goldenData || episode?.datasetId || episode?.datasetVersion); }
+const GOLDEN_DATASET_ID = 'GOLDEN-CN-INPATIENT-CHOLE-001';
+export function isGoldenEpisode(episode) { return Boolean(episode?.goldenData || episode?.datasetId === GOLDEN_DATASET_ID); }
 export function ageAt(date, birthDate) {
   const d = new Date(date), b = new Date(birthDate); if (!Number.isFinite(d.getTime()) || !Number.isFinite(b.getTime())) return null;
   let age = d.getFullYear() - b.getFullYear();
