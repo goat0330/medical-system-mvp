@@ -1,0 +1,120 @@
+:root {
+  /* Gold master: intelligent-consultation-replica-complete.zip */
+  --app-design-width: 1920;
+  --app-design-height: 1080;
+
+  --app-color-primary: #2f63f5;
+  --app-color-primary-hover: #2558df;
+  --app-color-primary-soft: #e6ecfe;
+  --app-color-primary-soft-40: #e6ecfe66;
+  --app-color-primary-soft-75: #e6ecfebf;
+  --app-color-primary-10: #2f63f51a;
+
+  --app-text-strong: #0f1b3d;
+  --app-text-document: #172443;
+  --app-text-primary: #34415e;
+  --app-text-secondary: #5f6d89;
+  --app-text-muted: #7483a0;
+  --app-text-weak: #8794aa;
+
+  --app-bg-page: #ffffff;
+  --app-bg-sidebar: #fcfcfd;
+  --app-bg-panel: #f0f3fa;
+  --app-bg-table-head: #f4f7fc;
+  --app-bg-hover: #f4f7ff;
+  --app-bg-row-hover: #f8faff;
+  --app-bg-subtle: #fbfcfe;
+
+  --app-border-default: #dce3ef;
+  --app-border-panel: #e3e8f2;
+  --app-border-soft: #e5eaf3;
+  --app-border-light: #e5ebf3;
+  --app-border-faint: #edf0f5;
+
+  --app-success: #08864b;
+  --app-success-bg: #e7f8ef;
+  --app-warning: #c96a00;
+  --app-warning-bg: #fff3e4;
+  --app-danger: #d92d20;
+  --app-danger-bg: #fff0ef;
+  --app-info: #1f62e6;
+  --app-info-bg: #eaf2ff;
+  --app-neutral: #65718b;
+  --app-neutral-bg: #f1f3f7;
+
+  --app-white: #ffffff;
+  --app-ink: #223455;
+  --app-warning-text-strong: #8a620d;
+  --app-warning-border: #f1d8a5;
+  --app-danger-border: #f1c9c9;
+  --app-success-border: #c7ead8;
+  --app-muted-arrow: #9aa8bf;
+  --app-flow-arrow: #9eb0cc;
+  --app-selected-border: #9eb8ff;
+  --app-dashed-border: #b9c9ef;
+  --app-bg-voice: #f7f9ff;
+
+  --app-radius-xs: .4rem;
+  --app-radius-sm: .6rem;
+  --app-radius-md: .8rem;
+  --app-radius-lg: 1.2rem;
+  --app-radius-xl: 1.6rem;
+  --app-radius-2xl: 2.4rem;
+  --app-radius-pill: 999rem;
+
+  --app-shadow-document: 0 .4rem 1.2rem rgba(26, 66, 147, .12);
+  --app-shadow-card: 0 .8rem 2.4rem rgba(39, 76, 139, .10);
+  --app-shadow-float: 0 .4rem .8rem rgba(47, 99, 245, .20), 0 1.2rem 3.6rem rgba(56, 94, 168, .12);
+
+  --app-sidebar-width: 24rem;
+  --app-sidebar-collapsed-width: 8.8rem;
+  --app-header-height: 9.6rem;
+  --app-workbench-left: 32rem;
+  --app-workbench-right: 36rem;
+
+  /* The original bundle used Alibaba PuHuiTi. Font binaries are intentionally not redistributed. */
+  --app-font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", system-ui, sans-serif;
+}
+
+/* Local medical record editor visual tokens */
+:root {
+  --app-editor-canvas: #e9edf2;
+  --app-editor-shell: #eef1f5;
+  --app-editor-paper-shell: #eef2f7;
+  --app-editor-tab-bg: #f6f8fb;
+  --app-editor-toolbar-text: #202833;
+  --app-editor-toolbar-control: #303a49;
+  --app-editor-control-text: #37445a;
+  --app-editor-control-label: #566277;
+  --app-editor-tab-text: #4e607b;
+  --app-editor-field: #0d65e7;
+  --app-editor-focus-bg: #eaf3ff;
+  --app-editor-hover-bg: #f0f5ff;
+  --app-editor-hover-border: #d9e6ff;
+  --app-editor-divider: #e2e6ec;
+  --app-editor-border: #dce1e8;
+  --app-editor-input-border: #dce2ea;
+  --app-editor-stage-border: #dce3ec;
+  --app-editor-tabs-border: #dfe4ec;
+  --app-editor-tab-close: #9ba8b9;
+  --app-editor-source-text: #657388;
+  --app-editor-source-border: #b9c4d3;
+  --app-qc-blue: #1268df;
+  --app-qc-blue-border: #8dbbff;
+  --app-qc-blue-soft: #f6faff;
+  --app-qc-blue-soft-border: #b7d7ff;
+  --app-qc-blue-muted: #50729b;
+  --app-qc-warning-icon: #ff9200;
+  --app-qc-warning-border: #e7a14c;
+  --app-qc-warning-soft: #fffdf7;
+  --app-qc-critical-icon: #ff4438;
+  --app-qc-critical-border: #ff8b7d;
+  --app-qc-critical-soft: #fffdfc;
+  --app-qc-inline: #ff3e36;
+  --app-qc-inline-border: #ff837b;
+  --app-qc-inline-action: #f16b63;
+  --app-qc-action-muted: #969696;
+  --app-qc-assess: #23a25e;
+  --app-qc-assess-border: #ccebd9;
+  --app-qc-assess-bg: #f7fffa;
+}

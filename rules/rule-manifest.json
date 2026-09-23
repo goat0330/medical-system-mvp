@@ -1,51 +1,16 @@
 {
-  "updatedAt": "2026-09-22",
-  "defaultProfile": {
-    "region": "CN-NATIONAL",
-    "paymentMode": "DRG",
-    "nationalRuleVersion": "3.0",
-    "localPaymentProfile": null
+  "version": "p0-local-ui-final",
+  "runtime": {
+    "medical_record_editor": "local_component",
+    "templates": "local_medical_record_templates",
+    "network_dependency": false
   },
-  "national": {
-    "notice": {
-      "title": "国家医疗保障局关于印发按病组和病种分值付费3.0版分组方案并做好落地实施相关工作的通知",
-      "number": "医保发〔2026〕22号",
-      "publishedAt": "2026-09-02",
-      "url": "https://www.nhsa.gov.cn/art/2026/9/2/art_104_21975.html"
-    },
-    "drg3": {
-      "version": "CHS-DRG-3.0",
-      "sourceType": "official_attachment",
-      "sourceUrl": "https://www.nhsa.gov.cn/module/download/downfile.jsp?classid=0&filename=a7d842bb9ca046868a17a5611f026086.pdf",
-      "status": "released_not_bundled"
-    },
-    "dip3": {
-      "version": "CHS-DIP-3.0",
-      "sourceType": "official_attachment",
-      "sourceUrl": "https://www.nhsa.gov.cn/module/download/downfile.jsp?classid=0&filename=7a05abef4b9842efbe1fa749aba67d53.pdf",
-      "status": "released_not_bundled"
-    }
+  "grouping": {
+    "drg_3_0": "pending_p1",
+    "dip_3_0": "pending_p1"
   },
-  "engineContract": {
-    "input": [
-      "patient_attributes",
-      "principal_diagnosis",
-      "secondary_diagnoses",
-      "procedures",
-      "discharge_status",
-      "settlement_list",
-      "clinical_evidence"
-    ],
-    "output": [
-      "grouping_code",
-      "grouping_name",
-      "grouping_path",
-      "rule_version",
-      "execution_status",
-      "quality_messages",
-      "payment_simulation",
-      "evidence_refs"
-    ]
-  },
-  "localProfiles": {}
+  "audit": {
+    "deterministic_rules": "p0_basic_only",
+    "nhsa_two_libraries": "pending_p1"
+  }
 }
