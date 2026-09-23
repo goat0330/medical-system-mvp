@@ -44,16 +44,27 @@ export function getDocumentReminderProfile(templateId, episode) {
 export function getInlineQualityIssues(templateId, episode) {
   if (templateId !== "admission") return [];
   const configured = episode?.demoQc?.inlineIssues;
-  if (Array.isArray(configured) && configured.length) return configured;
-  return [
+  const issues = Array.isArray(configured) && configured.length ? configured : [
     {
       id: "QC-INLINE-HISTORY-001",
       severity: "critical",
       order: 1,
       field: "现病史",
+      fieldName: "现病史",
+      fieldCode: "DE02.10.071.00",
+      anchorType: "field",
       message: "现病史中缺少“阴性症状”，需要补充",
     },
   ];
+  return issues.map((item) => {
+    const fieldName = item.fieldName || item.field || "";
+    return {
+      ...item,
+      fieldName,
+      fieldCode: item.fieldCode || (fieldName === "现病史" ? "DE02.10.071.00" : undefined),
+      anchorType: item.anchorType || (fieldName ? "field" : undefined),
+    };
+  });
 }
 
 export function qualitySummary(templateId, episode) {

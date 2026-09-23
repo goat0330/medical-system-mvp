@@ -1,0 +1,29 @@
+{
+  "variantId": "QC-V02",
+  "name": "结算清单多出EMR不存在的ENBD操作",
+  "baseEpisodeId": "EP-DEMO-001",
+  "applyTo": "医保结算清单",
+  "mutation": [
+    {
+      "op": "add",
+      "path": "/procedures/others/-",
+      "value": {
+        "code": "51.8600x002",
+        "name": "内镜下鼻胆管引流术（ENBD）",
+        "source": "仅注入结算清单"
+      }
+    }
+  ],
+  "expected": [
+    {
+      "code": "SETTLEMENT_EMR_PROCEDURE_MISMATCH",
+      "severity": "error",
+      "action": "退回核实"
+    }
+  ],
+  "counterfactual": {
+    "correctOutcome": "EXCLUDED_PRINCIPAL_DIAGNOSIS:K80.000",
+    "withInjectedRelatedProcedureOutcome": "EXCLUDED_PRINCIPAL_DIAGNOSIS:K80.000",
+    "purpose": "验证不纳入分组诊断先于操作组合匹配；本病例不适合证明DIP组别反事实变化"
+  }
+}

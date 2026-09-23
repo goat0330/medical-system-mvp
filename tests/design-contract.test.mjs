@@ -13,7 +13,7 @@ assert.match(tokens, /--app-color-primary:\s*#2f63f5/);
 assert.match(tokens, /--app-sidebar-width:\s*24rem/);
 assert.match(tokens, /--app-header-height:\s*9\.6rem/);
 assert.match(tokens, /--app-workbench-left:\s*32rem/);
-assert.match(tokens, /--app-workbench-right:\s*36rem/);
+assert.match(tokens, /--app-workbench-right:\s*42rem/);
 
 const rem = read('app/design/rem.js');
 assert.match(rem, /DESIGN_WIDTH = 1920/);

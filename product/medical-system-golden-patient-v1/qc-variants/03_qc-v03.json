@@ -1,0 +1,25 @@
+{
+  "variantId": "QC-V03",
+  "name": "费用明细合计与清单总额不一致",
+  "baseEpisodeId": "EP-DEMO-001",
+  "applyTo": "医保结算清单",
+  "mutation": [
+    {
+      "op": "replace",
+      "path": "/fees/rows/5/amount",
+      "value": 5801
+    }
+  ],
+  "expected": [
+    {
+      "code": "FEE_TOTAL_MISMATCH",
+      "severity": "error",
+      "action": "阻断申报"
+    },
+    {
+      "code": "PAYMENT_TOTAL_CHECK",
+      "severity": "warning",
+      "action": "核对支付结果"
+    }
+  ]
+}

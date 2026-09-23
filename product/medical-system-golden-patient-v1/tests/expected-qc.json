@@ -1,0 +1,83 @@
+{
+  "variants": [
+    {
+      "variantId": "QC-V01",
+      "name": "病案首页漏填主要手术",
+      "baseEpisodeId": "EP-DEMO-001",
+      "applyTo": "病案首页/医保结算清单映射层",
+      "mutation": [
+        {
+          "op": "remove",
+          "path": "/procedures/primary"
+        }
+      ],
+      "expected": [
+        {
+          "code": "PROCEDURE_REQUIRED_FOR_SURGICAL_EPISODE",
+          "severity": "error",
+          "action": "阻断分组"
+        },
+        {
+          "code": "EMR_FRONTPAGE_PROCEDURE_MISMATCH",
+          "severity": "error",
+          "evidence": "手术记录仍存在51.2300"
+        }
+      ],
+      "mustNotAssert": "不得继续输出HC45作为可信正式结果"
+    },
+    {
+      "variantId": "QC-V02",
+      "name": "结算清单多出EMR不存在的ENBD操作",
+      "baseEpisodeId": "EP-DEMO-001",
+      "applyTo": "医保结算清单",
+      "mutation": [
+        {
+          "op": "add",
+          "path": "/procedures/others/-",
+          "value": {
+            "code": "51.8600x002",
+            "name": "内镜下鼻胆管引流术（ENBD）",
+            "source": "仅注入结算清单"
+          }
+        }
+      ],
+      "expected": [
+        {
+          "code": "SETTLEMENT_EMR_PROCEDURE_MISMATCH",
+          "severity": "error",
+          "action": "退回核实"
+        }
+      ],
+      "counterfactual": {
+        "correctOutcome": "EXCLUDED_PRINCIPAL_DIAGNOSIS:K80.000",
+        "withInjectedRelatedProcedureOutcome": "EXCLUDED_PRINCIPAL_DIAGNOSIS:K80.000",
+        "purpose": "验证不纳入分组诊断先于操作组合匹配"
+      }
+    },
+    {
+      "variantId": "QC-V03",
+      "name": "费用明细合计与清单总额不一致",
+      "baseEpisodeId": "EP-DEMO-001",
+      "applyTo": "医保结算清单",
+      "mutation": [
+        {
+          "op": "replace",
+          "path": "/fees/rows/5/amount",
+          "value": 5801
+        }
+      ],
+      "expected": [
+        {
+          "code": "FEE_TOTAL_MISMATCH",
+          "severity": "error",
+          "action": "阻断申报"
+        },
+        {
+          "code": "PAYMENT_TOTAL_CHECK",
+          "severity": "warning",
+          "action": "核对支付结果"
+        }
+      ]
+    }
+  ]
+}

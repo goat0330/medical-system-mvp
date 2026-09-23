@@ -70,7 +70,7 @@
   --app-sidebar-collapsed-width: 8.8rem;
   --app-header-height: 9.6rem;
   --app-workbench-left: 32rem;
-  --app-workbench-right: 36rem;
+  --app-workbench-right: 42rem;
 
   /* The original bundle used Alibaba PuHuiTi. Font binaries are intentionally not redistributed. */
   --app-font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", system-ui, sans-serif;

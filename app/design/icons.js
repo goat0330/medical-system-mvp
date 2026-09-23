@@ -12,6 +12,7 @@ const ICONS = Object.freeze({
   refresh: svg('<path d="M20 6v5h-5M4 18v-5h5"/><path d="M7.2 7.2A7 7 0 0118.8 9M5.2 15A7 7 0 0016.8 16.8"/>'),
   send: svg('<path d="M4 4l16 8-16 8 3-8z"/><path d="M7 12h13"/>'),
   check: svg('<path d="M5 12l4 4L19 6"/>'),
+  close: svg('<path d="M6 6l12 12M18 6L6 18"/>'),
   chevronRight: svg('<path d="M9 5l7 7-7 7"/>'),
   search: svg('<circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/>'),
   evidence: svg('<path d="M4 5h16v14H4z"/><path d="M7 9h10M7 13h7M7 17h5"/>'),
@@ -21,6 +22,14 @@ const ICONS = Object.freeze({
   calendar: svg('<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18"/>'),
   clock: svg('<circle cx="12" cy="12" r="9"/><path d="M12 7v6l4 2"/>'),
   hospital: svg('<path d="M4 21V7h16v14M8 7V3h8v4M10 11h4M12 9v4M8 17h2M14 17h2"/>'),
+  ai: svg('<path d="M12 3l1.7 5.3L19 10l-5.3 1.7L12 17l-1.7-5.3L5 10l5.3-1.7L12 3z"/><path d="M19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8L19 16z"/>'),
+  settings: svg('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.9l.1.1-1.6 2.8-.2-.1a1.7 1.7 0 00-1.9.3l-.2.2h-3.2l-.1-.2a1.7 1.7 0 00-1.9-.3l-.2.1-1.6-2.8.1-.1a1.7 1.7 0 00.3-1.9l-.1-.2V12l.2-.1a1.7 1.7 0 00.3-1.9l-.1-.2 1.6-2.8.2.1a1.7 1.7 0 001.9-.3l.1-.2h3.2l.2.2a1.7 1.7 0 001.9.3l.2-.1 1.6 2.8-.1.2a1.7 1.7 0 00-.3 1.9l.1.1v2.8z"/>'),
+  play: svg('<path d="M7 4.8v14.4a.8.8 0 001.2.7l11-7.2a.8.8 0 000-1.4l-11-7.2A.8.8 0 007 4.8z"/>'),
+  eye: svg('<path d="M2.5 12s3.3-6 9.5-6 9.5 6 9.5 6-3.3 6-9.5 6-9.5-6-9.5-6z"/><circle cx="12" cy="12" r="2.7"/>'),
+  plus: svg('<path d="M12 5v14M5 12h14"/>'),
+  chevronDown: svg('<path d="M6 9l6 6 6-6"/>'),
+  link: svg('<path d="M10 13.5l4-4"/><path d="M8.5 15l-1.2 1.2a3 3 0 01-4.2-4.2l4.2-4.2a3 3 0 014.2 0M15.5 9l1.2-1.2a3 3 0 014.2 4.2l-4.2 4.2a3 3 0 01-4.2 0"/>'),
+  spinner: svg('<path d="M20.5 12a8.5 8.5 0 11-2.5-6"/><path d="M20.5 4v5h-5"/>'),
 });
 
 export function icon(name) { return ICONS[name] || ICONS.document; }

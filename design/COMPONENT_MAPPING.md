@@ -7,7 +7,7 @@
 | `.card` | `BaseCard` | 统一视觉 primitive |
 | `.tag` / `.status` | `StatusBadge` | 统一 5 种语义状态 |
 | `.table` | `ClinicalDataTable` | 管理型列表统一使用 |
-| 病历页面 | `Workbench` | 整页映射为 32rem / 1fr / 36rem |
+| 病历页面 | `Workbench` | 整页映射为 32rem / 1fr / 42rem，右侧辅助栏可调为 36–48rem |
 | 病案首页 | `Workbench + MedicalDocument` | 不再另造布局 |
 | DRG 卡片 | `GroupingPath + RuleTrace` | 新领域组件 |
 | 风险卡 | `RiskIssueCard` | 新领域组件 |

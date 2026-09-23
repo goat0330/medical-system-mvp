@@ -1,0 +1,66 @@
+{
+  "episodeId": "EP-DEMO-001",
+  "templates": [
+    {
+      "templateId": "frontpage",
+      "name": "住院病案首页",
+      "source": "documents/01_住院病案首页.md",
+      "status": "confirmed"
+    },
+    {
+      "templateId": "admission",
+      "name": "入院记录",
+      "source": "documents/02_入院记录.md",
+      "status": "confirmed"
+    },
+    {
+      "templateId": "first-progress",
+      "name": "首次病程记录",
+      "source": "documents/03_首次病程记录.md",
+      "status": "confirmed"
+    },
+    {
+      "templateId": "daily-progress",
+      "name": "日常病程记录",
+      "source": "documents/04_日常病程记录.md",
+      "status": "confirmed"
+    },
+    {
+      "templateId": "attending-first-round",
+      "name": "主治医师首次查房记录",
+      "source": "documents/05_主治医师首次查房记录.md",
+      "status": "confirmed"
+    },
+    {
+      "templateId": "attending-round",
+      "name": "主治医师查房记录",
+      "source": "documents/06_主治医师查房记录.md",
+      "status": "confirmed"
+    },
+    {
+      "templateId": "preop",
+      "name": "术前小结",
+      "source": "documents/07_术前小结.md",
+      "status": "confirmed"
+    },
+    {
+      "templateId": "surgery",
+      "name": "手术记录",
+      "source": "documents/08_手术记录.md",
+      "status": "confirmed"
+    },
+    {
+      "templateId": "postop-first-progress",
+      "name": "术后首次病程记录",
+      "source": "documents/09_术后首次病程记录.md",
+      "status": "confirmed",
+      "currentUiTemplate": "尚未挂载"
+    },
+    {
+      "templateId": "discharge",
+      "name": "出院记录",
+      "source": "documents/10_出院记录.md",
+      "status": "confirmed"
+    }
+  ]
+}

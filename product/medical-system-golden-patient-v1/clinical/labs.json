@@ -1,0 +1,156 @@
+[
+  {
+    "panelId": "LAB-20260918",
+    "at": "2026-09-18T10:10:00+08:00",
+    "items": [
+      {
+        "name": "白细胞计数",
+        "code": "WBC",
+        "value": 12.3,
+        "unit": "10^9/L",
+        "ref": "3.5-9.5",
+        "flag": "H"
+      },
+      {
+        "name": "中性粒细胞百分比",
+        "code": "NEUT%",
+        "value": 79.0,
+        "unit": "%",
+        "ref": "40-75",
+        "flag": "H"
+      },
+      {
+        "name": "血红蛋白",
+        "code": "HGB",
+        "value": 142,
+        "unit": "g/L",
+        "ref": "130-175",
+        "flag": ""
+      },
+      {
+        "name": "血小板计数",
+        "code": "PLT",
+        "value": 247,
+        "unit": "10^9/L",
+        "ref": "125-350",
+        "flag": ""
+      },
+      {
+        "name": "C反应蛋白",
+        "code": "CRP",
+        "value": 32,
+        "unit": "mg/L",
+        "ref": "0-8",
+        "flag": "H"
+      },
+      {
+        "name": "丙氨酸氨基转移酶",
+        "code": "ALT",
+        "value": 28,
+        "unit": "U/L",
+        "ref": "9-50",
+        "flag": ""
+      },
+      {
+        "name": "天门冬氨酸氨基转移酶",
+        "code": "AST",
+        "value": 25,
+        "unit": "U/L",
+        "ref": "15-40",
+        "flag": ""
+      },
+      {
+        "name": "总胆红素",
+        "code": "TBIL",
+        "value": 15.0,
+        "unit": "μmol/L",
+        "ref": "5-21",
+        "flag": ""
+      },
+      {
+        "name": "直接胆红素",
+        "code": "DBIL",
+        "value": 4.6,
+        "unit": "μmol/L",
+        "ref": "0-7",
+        "flag": ""
+      },
+      {
+        "name": "碱性磷酸酶",
+        "code": "ALP",
+        "value": 87,
+        "unit": "U/L",
+        "ref": "45-125",
+        "flag": ""
+      },
+      {
+        "name": "γ-谷氨酰转移酶",
+        "code": "GGT",
+        "value": 36,
+        "unit": "U/L",
+        "ref": "10-60",
+        "flag": ""
+      },
+      {
+        "name": "脂肪酶",
+        "code": "LIP",
+        "value": 34,
+        "unit": "U/L",
+        "ref": "13-60",
+        "flag": ""
+      },
+      {
+        "name": "肌酐",
+        "code": "CREA",
+        "value": 76,
+        "unit": "μmol/L",
+        "ref": "57-97",
+        "flag": ""
+      }
+    ]
+  },
+  {
+    "panelId": "LAB-20260919",
+    "at": "2026-09-19T07:40:00+08:00",
+    "items": [
+      {
+        "name": "白细胞计数",
+        "code": "WBC",
+        "value": 9.8,
+        "unit": "10^9/L",
+        "ref": "3.5-9.5",
+        "flag": "H"
+      },
+      {
+        "name": "C反应蛋白",
+        "code": "CRP",
+        "value": 18,
+        "unit": "mg/L",
+        "ref": "0-8",
+        "flag": "H"
+      }
+    ]
+  },
+  {
+    "panelId": "LAB-20260921",
+    "at": "2026-09-21T07:50:00+08:00",
+    "items": [
+      {
+        "name": "白细胞计数",
+        "code": "WBC",
+        "value": 8.1,
+        "unit": "10^9/L",
+        "ref": "3.5-9.5",
+        "flag": ""
+      },
+      {
+        "name": "C反应蛋白",
+        "code": "CRP",
+        "value": 10,
+        "unit": "mg/L",
+        "ref": "0-8",
+        "flag": "H"
+      }
+    ]
+  }
+]

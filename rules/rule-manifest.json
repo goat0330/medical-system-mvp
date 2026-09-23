@@ -1,16 +1,41 @@
 {
-  "version": "p0-local-ui-final",
+  "version": "p1-official-drg-dip-3.0-real-business-flow-2026-09-23",
   "runtime": {
-    "medical_record_editor": "local_component",
-    "templates": "local_medical_record_templates",
-    "network_dependency": false
+    "medical_record_editor": "existing_repo_component",
+    "network_dependency": false,
+    "official_rule_sources_bundled": true
   },
   "grouping": {
-    "drg_3_0": "pending_p1",
-    "dip_3_0": "pending_p1"
+    "payment_policy_router": "implemented",
+    "drg_3_0": "official_workbook_full_import",
+    "drg_3_0_formula_engine": "implemented",
+    "drg_3_0_cc_mcc_cce": "implemented",
+    "drg_3_0_trace": "implemented",
+    "dip_3_0": "official_workbook_full_import",
+    "dip_3_0_pre_group": "implemented",
+    "dip_3_0_merge_rules": "implemented",
+    "dip_3_0_auxiliary_split": "implemented",
+    "dip_3_0_base_core_disease": "implemented",
+    "dip_3_0_exclusion_lists": "implemented",
+    "trace": "implemented"
+  },
+  "source_integrity": {
+    "drg_xlsx_sha256": "2037d128255502a072e0585dff59dabc97864e2e7a8ed22e894bdd48c53dcb5e",
+    "dip_xlsx_sha256": "dec2b17b8f277bec8153d8d8922380e8145ca420dc90758bcb45ad2a98a5dc7d"
+  },
+  "payment": {
+    "national_grouping_vs_local_payment_parameters": "separated",
+    "wuhan_3_0_weights_rates": "pending_verified",
+    "fake_payment_amounts": false
   },
   "audit": {
-    "deterministic_rules": "p0_basic_only",
-    "nhsa_two_libraries": "pending_p1"
+    "data_quality": "implemented",
+    "coding_standardization": "implemented",
+    "claim_detail_basic_checks": "implemented_when_claim_detail_available",
+    "nhsa_two_libraries_full_knowledge_pack": "not_bundled",
+    "drg_counterfactual": "implemented",
+    "dip_counterfactual": "implemented",
+    "evidence_retrieval": "implemented",
+    "human_review_loop": "implemented"
   }
 }

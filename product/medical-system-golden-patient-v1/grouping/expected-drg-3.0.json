@@ -1,0 +1,40 @@
+{
+  "scheme": "CHS-DRG 3.0 / 用户提供的国家3.0分组配置快照",
+  "case": "EP-DEMO-001",
+  "inputs": {
+    "age": 43,
+    "principalDiagnosis": {
+      "code": "K80.000x002",
+      "name": "胆囊结石伴急性胆囊炎"
+    },
+    "secondaryDiagnoses": [],
+    "primaryProcedure": {
+      "code": "51.2300",
+      "name": "腹腔镜下胆囊切除术"
+    }
+  },
+  "expectedPath": [
+    {
+      "level": "MDC",
+      "code": "MDCH",
+      "name": "肝、胆、胰疾病及功能障碍",
+      "reason": "主要诊断属于对应诊断集合"
+    },
+    {
+      "level": "ADRG",
+      "code": "HC4",
+      "name": "胆囊切除手术",
+      "reason": "51.2300命中胆囊切除手术操作集合"
+    },
+    {
+      "level": "DRG",
+      "code": "HC45",
+      "name": "胆囊切除手术，不伴合并症或并发症",
+      "reason": "年龄43岁；无其他诊断，因此无CC/MCC分支"
+    }
+  ],
+  "assertions": [
+    "不得用大模型直接决定DRG；应由确定性规则执行器得到相同结果。",
+    "若病案首页/结算清单漏掉51.2300，应在分组前被完整性质控阻断，而不是继续声称HC45。"
+  ]
+}

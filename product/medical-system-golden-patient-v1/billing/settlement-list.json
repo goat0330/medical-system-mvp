@@ -1,0 +1,306 @@
+{
+  "objectType": "medical_security_fund_settlement_list",
+  "templateVersion": "医保办发〔2021〕34号字段语义子集 / medical-system-mvp P0 adapter",
+  "episodeId": "EP-DEMO-001",
+  "claimSerialNumber": "JSQD-GOLD-001",
+  "institution": {
+    "name": "XX省第XX人民医院",
+    "code": "HOSP-DEMO-001",
+    "level": "三级"
+  },
+  "insurance": {
+    "number": "HB-WH-DEMO-001",
+    "type": "职工基本医疗保险",
+    "region": "湖北省武汉市",
+    "specialPersonnelType": "",
+    "synthetic": true
+  },
+  "medicalRecordNumber": "BA-DEMO-001",
+  "inpatientNumber": "EP-DEMO-001",
+  "reportDate": "2026-09-23",
+  "patient": {
+    "patientId": "P-DEMO-001",
+    "name": "虚构患者甲",
+    "sex": "男",
+    "birthDate": "1983-02-18",
+    "age": 43,
+    "nationality": "中国",
+    "ethnicity": "汉族",
+    "idType": "居民身份证",
+    "idNumber": "DEMO-ID-001",
+    "occupation": "职员",
+    "maritalStatus": "已婚",
+    "currentAddress": "湖北省武汉市XX区XX街道",
+    "birthPlace": "湖北省武汉市",
+    "contactName": "虚构联系人乙",
+    "contactRelationship": "家属",
+    "contactPhone": "138****0001"
+  },
+  "inpatient": {
+    "medicalType": "住院",
+    "admissionSource": "门诊",
+    "treatmentCategory": "西医",
+    "admissionAt": "2026-09-18T09:20:00+08:00",
+    "admissionDepartment": "普通外科",
+    "transferDepartment": "",
+    "dischargeAt": "2026-09-23T10:30:00+08:00",
+    "dischargeDepartment": "普通外科",
+    "lengthOfStay": 5,
+    "outpatientWestern": [
+      {
+        "name": "胆囊结石伴急性胆囊炎",
+        "code": "K80.000x002"
+      }
+    ],
+    "outpatientTcm": [],
+    "dischargeWestern": [
+      {
+        "name": "胆囊结石伴急性胆囊炎",
+        "code": "K80.000x002",
+        "conditionAtAdmission": "有"
+      }
+    ],
+    "dischargeTcm": [],
+    "principalDiagnosis": {
+      "name": "胆囊结石伴急性胆囊炎",
+      "code": "K80.000x002",
+      "conditionAtAdmission": "有"
+    },
+    "secondaryDiagnoses": [],
+    "diagnosisCodeCount": 1
+  },
+  "procedures": {
+    "primary": {
+      "id": "OP-GOLD-001",
+      "role": "primary",
+      "name": "腹腔镜下胆囊切除术",
+      "code": "51.2300",
+      "anesthesiaType": "全身麻醉",
+      "operator": {
+        "name": "李医生",
+        "code": "DOC-DEMO-001"
+      },
+      "anesthesiologist": {
+        "name": "赵医生",
+        "code": "AN-DEMO-001"
+      },
+      "startAt": "2026-09-20T10:00:00+08:00",
+      "endAt": "2026-09-20T11:05:00+08:00"
+    },
+    "others": [],
+    "codeCount": 1
+  },
+  "clinicalProcess": {
+    "ventilatorDuration": {
+      "days": 0,
+      "hours": 0,
+      "minutes": 0
+    },
+    "comaBeforeAdmission": {
+      "days": 0,
+      "hours": 0,
+      "minutes": 0
+    },
+    "comaAfterAdmission": {
+      "days": 0,
+      "hours": 0,
+      "minutes": 0
+    },
+    "icuStays": [],
+    "transfusions": [],
+    "nursingDays": {
+      "special": 0,
+      "primary": 1,
+      "secondary": 4,
+      "tertiary": 0
+    }
+  },
+  "discharge": {
+    "at": "2026-09-23T10:30:00+08:00",
+    "department": "普通外科",
+    "method": "医嘱离院",
+    "readmissionWithin31Days": "无",
+    "attendingPhysician": {
+      "name": "李医生",
+      "code": "DOC-DEMO-001"
+    },
+    "responsibleNurse": {
+      "name": "王护士",
+      "code": "NUR-DEMO-001"
+    }
+  },
+  "fees": {
+    "businessSerialNumber": "FY-GOLD-001",
+    "invoiceCode": "INV-DEMO-CODE",
+    "invoiceNumber": "INV-GOLD-001",
+    "settlementStart": "2026-09-18",
+    "settlementEnd": "2026-09-23",
+    "rows": [
+      {
+        "label": "床位费",
+        "amount": 300,
+        "classA": 300,
+        "classB": 0,
+        "selfPay": 0,
+        "other": 0,
+        "source": "HIS费用明细"
+      },
+      {
+        "label": "诊察费",
+        "amount": 160,
+        "classA": 160,
+        "classB": 0,
+        "selfPay": 0,
+        "other": 0,
+        "source": "HIS费用明细"
+      },
+      {
+        "label": "检查费",
+        "amount": 850,
+        "classA": 650,
+        "classB": 200,
+        "selfPay": 0,
+        "other": 0,
+        "source": "HIS费用明细"
+      },
+      {
+        "label": "化验费",
+        "amount": 670,
+        "classA": 570,
+        "classB": 100,
+        "selfPay": 0,
+        "other": 0,
+        "source": "HIS费用明细"
+      },
+      {
+        "label": "治疗费",
+        "amount": 900,
+        "classA": 700,
+        "classB": 200,
+        "selfPay": 0,
+        "other": 0,
+        "source": "HIS费用明细"
+      },
+      {
+        "label": "手术费",
+        "amount": 5800,
+        "classA": 5000,
+        "classB": 800,
+        "selfPay": 0,
+        "other": 0,
+        "source": "HIS费用明细"
+      },
+      {
+        "label": "护理费",
+        "amount": 520,
+        "classA": 520,
+        "classB": 0,
+        "selfPay": 0,
+        "other": 0,
+        "source": "HIS费用明细"
+      },
+      {
+        "label": "卫生材料费",
+        "amount": 2300,
+        "classA": 1100,
+        "classB": 700,
+        "selfPay": 500,
+        "other": 0,
+        "source": "HIS费用明细"
+      },
+      {
+        "label": "西药费",
+        "amount": 1580,
+        "classA": 1000,
+        "classB": 380,
+        "selfPay": 200,
+        "other": 0,
+        "source": "HIS费用明细"
+      },
+      {
+        "label": "中药饮片费",
+        "amount": 0,
+        "classA": 0,
+        "classB": 0,
+        "selfPay": 0,
+        "other": 0,
+        "source": "HIS费用明细"
+      },
+      {
+        "label": "中成药费",
+        "amount": 0,
+        "classA": 0,
+        "classB": 0,
+        "selfPay": 0,
+        "other": 0,
+        "source": "HIS费用明细"
+      },
+      {
+        "label": "一般诊疗费",
+        "amount": 0,
+        "classA": 0,
+        "classB": 0,
+        "selfPay": 0,
+        "other": 0,
+        "source": "HIS费用明细"
+      },
+      {
+        "label": "挂号费",
+        "amount": 0,
+        "classA": 0,
+        "classB": 0,
+        "selfPay": 0,
+        "other": 0,
+        "source": "HIS费用明细"
+      },
+      {
+        "label": "其他费",
+        "amount": 320,
+        "classA": 120,
+        "classB": 0,
+        "selfPay": 200,
+        "other": 0,
+        "source": "HIS费用明细"
+      }
+    ],
+    "totals": {
+      "amount": 13400,
+      "classA": 10120,
+      "classB": 2380,
+      "selfPay": 900,
+      "other": 0
+    }
+  },
+  "payment": {
+    "method": "DRG",
+    "fund": 9000,
+    "individualBurden": 4400,
+    "individualSelfPay": 900,
+    "supplemental": 0,
+    "employeeLargeAmount": 0,
+    "residentCriticalIllness": 0,
+    "civilServant": 0,
+    "medicalAssistance": 0,
+    "enterpriseSupplemental": 0,
+    "commercial": 0,
+    "other": 0,
+    "individualAccount": 2600,
+    "individualCash": 1800,
+    "synthetic": true,
+    "calculationMode": "仅用于金额勾稽测试，不模拟武汉真实待遇结算公式"
+  },
+  "fieldSources": {
+    "patient": "HIS/病案首页",
+    "diagnosis": "病案首页/编码",
+    "procedures": "病案首页/手术记录",
+    "clinicalProcess": "EMR/HIS",
+    "fees": "HIS费用明细",
+    "payment": "医保结算模块（Golden合成数据）"
+  },
+  "goldenAssertions": {
+    "feeTotal": 13400,
+    "paymentTotal": 13400,
+    "principalDiagnosis": "K80.000x002",
+    "primaryProcedure": "51.2300"
+  }
+}

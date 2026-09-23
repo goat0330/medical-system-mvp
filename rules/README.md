@@ -1,6 +1,8 @@
 # 国家 DRG/DIP 3.0 规则包接入约定
 
-国家 DRG/DIP 3.0 的正式通知和附件是版本主来源。当前项目只绑定版本元数据，未将 PDF 附件假装成可执行分组器。
+国家 DRG/DIP 3.0 工作簿是当前本地规则包的来源。原始文件保存在 `rulesets/official-source/`，由 `scripts/compile-official-rulepacks.py` 编译为 `app/p1/rules/compiled/` 中的运行时数据；工作簿版本和 SHA-256 记录在 `rules/rule-manifest.json`。重新编译后应运行 `node tests/p1-real-flow.test.mjs` 验证分组与 trace。
+
+这套 Grouper 是对随项目工作簿规则的本地确定性执行，不是医保生产分组服务。武汉地方支付参数不在工作簿内；未经核验时不得输出生产支付金额。完整国家医保智能监管“两库”也不属于这两份分组工作簿。
 
 规则包接入后，每次分组必须保留：
 

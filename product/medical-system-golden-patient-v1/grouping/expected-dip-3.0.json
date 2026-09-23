@@ -1,0 +1,25 @@
+{
+  "scheme": "DIP 3.0 / 用户提供的国家3.0分组方案快照",
+  "case": "EP-DEMO-001",
+  "inputs": {
+    "principalDiagnosis": {
+      "code": "K80.000x002",
+      "normalizedPrefix": "K80",
+      "name": "胆囊结石伴急性胆囊炎"
+    },
+    "primaryProcedure": {
+      "code": "51.2300",
+      "name": "腹腔镜下胆囊切除术"
+    },
+    "relatedProcedures": []
+  },
+  "expectedResult": {
+    "status": "EXCLUDED_PRINCIPAL_DIAGNOSIS",
+    "exclusion": {
+      "code": "K80.000",
+      "name": "胆囊结石伴有急性胆囊炎",
+      "sourceRow": 1180
+    },
+    "note": "K80.000x002 命中 K80.000 排除前缀；按规则先执行排除，不产生 DIP 病种组。"
+  }
+}

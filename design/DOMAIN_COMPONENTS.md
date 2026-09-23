@@ -25,6 +25,9 @@
 ### SettlementSection
 医保结算清单分组字段展示组件。
 
+### HmEditorRuntimeFrame
+作为现有 Workbench 中央文书区的承载组件。编辑器工具栏、纸张分页和结构化数据元控件由本地上游运行时提供；项目只负责 Episode 数据映射、保存回读以及编辑器外的质控提醒，不再创建第二套工具栏或纸张渲染器。
+
 ## 后续新增
 
 后续 DRG3GrouperAdapter、DIP3Parser、AuditEngine、EvidenceEngine 只修改数据层和这些领域组件内容，不允许创建第二套 Shell/Card/Table/Badge。

@@ -18,7 +18,9 @@
 
 固定三栏：
 
-`32rem RecordNavigation | 1fr WorkbenchContent | 36rem PatientHistory`
+`32rem RecordNavigation | 1fr WorkbenchContent | 42rem PatientHistory`
+
+PatientHistory has a keyboard-accessible resize handle and can be adjusted from 36rem to 48rem; the default is 42rem. The clinical workbench remains a three-column layout.
 
 页面标题占三列顶部 `9.6rem`。
 

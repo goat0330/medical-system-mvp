@@ -1,0 +1,128 @@
+[
+  {
+    "category": "bed",
+    "name": "床位费",
+    "amount": 300,
+    "classA": 300,
+    "classB": 0,
+    "selfPay": 0,
+    "other": 0
+  },
+  {
+    "category": "consultation",
+    "name": "诊察费",
+    "amount": 160,
+    "classA": 160,
+    "classB": 0,
+    "selfPay": 0,
+    "other": 0
+  },
+  {
+    "category": "examination",
+    "name": "检查费",
+    "amount": 850,
+    "classA": 650,
+    "classB": 200,
+    "selfPay": 0,
+    "other": 0
+  },
+  {
+    "category": "laboratory",
+    "name": "化验费",
+    "amount": 670,
+    "classA": 570,
+    "classB": 100,
+    "selfPay": 0,
+    "other": 0
+  },
+  {
+    "category": "treatment",
+    "name": "治疗费",
+    "amount": 900,
+    "classA": 700,
+    "classB": 200,
+    "selfPay": 0,
+    "other": 0
+  },
+  {
+    "category": "surgery",
+    "name": "手术费",
+    "amount": 5800,
+    "classA": 5000,
+    "classB": 800,
+    "selfPay": 0,
+    "other": 0
+  },
+  {
+    "category": "nursing",
+    "name": "护理费",
+    "amount": 520,
+    "classA": 520,
+    "classB": 0,
+    "selfPay": 0,
+    "other": 0
+  },
+  {
+    "category": "material",
+    "name": "卫生材料费",
+    "amount": 2300,
+    "classA": 1100,
+    "classB": 700,
+    "selfPay": 500,
+    "other": 0
+  },
+  {
+    "category": "westernMedicine",
+    "name": "西药费",
+    "amount": 1580,
+    "classA": 1000,
+    "classB": 380,
+    "selfPay": 200,
+    "other": 0
+  },
+  {
+    "category": "tcm",
+    "name": "中药饮片费",
+    "amount": 0,
+    "classA": 0,
+    "classB": 0,
+    "selfPay": 0,
+    "other": 0
+  },
+  {
+    "category": "patentMedicine",
+    "name": "中成药费",
+    "amount": 0,
+    "classA": 0,
+    "classB": 0,
+    "selfPay": 0,
+    "other": 0
+  },
+  {
+    "category": "general",
+    "name": "一般诊疗费",
+    "amount": 0,
+    "classA": 0,
+    "classB": 0,
+    "selfPay": 0,
+    "other": 0
+  },
+  {
+    "category": "registration",
+    "name": "挂号费",
+    "amount": 0,
+    "classA": 0,
+    "classB": 0,
+    "selfPay": 0,
+    "other": 0
+  },
+  {
+    "category": "other",
+    "name": "其他费",
+    "amount": 320,
+    "classA": 120,
+    "classB": 0,
+    "selfPay": 200,
+    "other": 0
+  }
+]

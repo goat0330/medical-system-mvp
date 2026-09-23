@@ -8,12 +8,20 @@ const editorCss = readFileSync(new URL('../app/design/record-editor.css', import
 const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 
 for (const phrase of ['病历编辑质控','医保结算清单','DRG / DIP 3.0','智能医保审核']) assert.match(main, new RegExp(phrase));
-for (const component of ['workbench-detail','record-navigation','patient-history','medical-record-editor-host','record-qc-floating','patient-selector-card','patient-option']) assert.ok(main.includes(component) || editorCss.includes(component) || medicalCss.includes(component), `missing ${component}`);
-assert.match(css, /design\/record-editor\.css/);
+for (const component of ['workbench-detail','record-navigation','patient-history','medical-record-editor-host','record-qc-anchor-layer','patient-selector-card','patient-option']) assert.ok(main.includes(component) || editorCss.includes(component) || medicalCss.includes(component), `missing ${component}`);
+assert.match(index, /app\/design\/record-editor\.css/);
 assert.match(index, /住院医疗智能系统/);
 assert.doesNotMatch(main, /editor\.huimei\.com|raw\.githubusercontent\.com|HmEditor|惠每/i);
+assert.doesNotMatch(main, /record-qc-floating|record-qc-reminder/);
+assert.match(main, /data-ai-model-settings/);
+assert.match(main, /data-ai-qc-run/);
+assert.match(main, /modelConfigId: activeModelId/);
+assert.doesNotMatch(main, /data-ai-api-key|data-ai-qc-form/);
+assert.doesNotMatch(main, /DeepSeek|deepseek-flash/i);
 assert.match(main, /function selectPatient\(key\)/);
 assert.match(main, /state\.editorSession\?\.destroy\?\./);
+assert.match(main, /getPatientOptions\(\)/);
+assert.match(main, /selectPatientByKey\(key\)/);
 
 class FakeElement {
   constructor(dataset) { this.dataset = dataset; this.listeners = new Map(); }
@@ -58,9 +66,18 @@ globalThis.window = { innerWidth: 1920, innerHeight: 1080, addEventListener() {}
 await import(`../app/main.js?ui-runtime=${Date.now()}`);
 
 assert.equal(document.documentElement.style.fontSize, '10px');
+assert.match(app.innerHTML, /qc-issue-row--critical/);
+assert.match(app.innerHTML, /qc-issue-row--warning/);
+assert.match(app.innerHTML, /data-qc-action="assess">去评估/);
+assert.match(app.innerHTML, /data-right-tab="mapping"[^>]*>字段映射/);
 assert.match(app.innerHTML, /patient-selector-card/);
 assert.match(app.innerHTML, /虚构患者甲/);
-assert.match(app.innerHTML, /EP-DEMO-001/);
+assert.match(app.innerHTML, /EP-GOLDEN-001/);
+const goldenEpisode = window.medicalSystemMvp.getEpisodeContext().episode;
+assert.equal(goldenEpisode.patient.age, 43);
+assert.equal(goldenEpisode.patient.birthDate, '1983-02-18');
+assert.equal(goldenEpisode.diagnoses.principal.code, 'K80.000x002');
+assert.equal(goldenEpisode.fees.items.reduce((sum, item) => sum + item.amount, 0), 13400);
 
 function clickData(selector, key, value) {
   const node = document.querySelectorAll(selector).find((item) => item.dataset[key] === value);
@@ -80,5 +97,31 @@ clickData('[data-view]', 'view', 'settlement');
 assert.match(app.innerHTML, /JSQD-DEMO-003/);
 clickData('[data-view]', 'view', 'documents');
 assert.match(app.innerHTML, /李某某/);
+assert.equal(window.medicalSystemMvp.getPatientOptions().length, 6);
+assert.equal(window.medicalSystemMvp.getSelectedPatientKey(), 'p-03');
+
+await clickDataAsync('[data-template-id]', 'templateId', 'first-progress');
+assert.match(app.innerHTML, /data-document-tab="admission"/);
+assert.match(app.innerHTML, /data-document-tab="first-progress"/);
+assert.match(app.innerHTML, /record-editor-tab is-active[^>]*>[\s\S]*?data-document-tab="first-progress"/);
+await clickDataAsync('[data-document-tab]', 'documentTab', 'admission');
+assert.match(app.innerHTML, /record-editor-tab is-active[^>]*>[\s\S]*?data-document-tab="admission"/);
+await clickDataAsync('[data-close-document-tab]', 'closeDocumentTab', 'first-progress');
+assert.doesNotMatch(app.innerHTML, /data-document-tab="first-progress"/);
+await clickDataAsync('[data-template-id]', 'templateId', 'daily-progress');
+await clickDataAsync('[data-close-document-tab]', 'closeDocumentTab', 'daily-progress');
+assert.match(app.innerHTML, /data-document-tab="admission"/);
+assert.doesNotMatch(app.innerHTML, /data-document-tab="daily-progress"/);
+
+window.medicalSystemMvp.selectPatientByKey('p-08');
+assert.equal(window.medicalSystemMvp.getEpisodeContext().episode.episodeId, 'EP-DEMO-004');
+assert.equal(window.medicalSystemMvp.getSelectedPatientKey(), 'p-08');
+assert.match(app.innerHTML, /data-document-tab="admission"/);
+assert.doesNotMatch(app.innerHTML, /data-document-tab="daily-progress"/);
+
+async function clickDataAsync(selector, key, value) {
+  clickData(selector, key, value);
+  await new Promise((resolve) => setTimeout(resolve, 0));
+}
 
 console.log('PASS UI runtime and patient selector');

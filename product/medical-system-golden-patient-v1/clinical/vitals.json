@@ -1,0 +1,65 @@
+[
+  {
+    "at": "2026-09-18T09:30:00+08:00",
+    "temperatureC": 37.8,
+    "pulse": 88,
+    "respiration": 18,
+    "systolic": 126,
+    "diastolic": 78,
+    "spo2": 98
+  },
+  {
+    "at": "2026-09-19T08:00:00+08:00",
+    "temperatureC": 36.8,
+    "pulse": 76,
+    "respiration": 18,
+    "systolic": 122,
+    "diastolic": 76,
+    "spo2": 99
+  },
+  {
+    "at": "2026-09-20T07:30:00+08:00",
+    "temperatureC": 36.6,
+    "pulse": 72,
+    "respiration": 17,
+    "systolic": 124,
+    "diastolic": 75,
+    "spo2": 99
+  },
+  {
+    "at": "2026-09-20T13:30:00+08:00",
+    "temperatureC": 36.7,
+    "pulse": 82,
+    "respiration": 18,
+    "systolic": 118,
+    "diastolic": 72,
+    "spo2": 98
+  },
+  {
+    "at": "2026-09-21T08:00:00+08:00",
+    "temperatureC": 36.8,
+    "pulse": 74,
+    "respiration": 18,
+    "systolic": 120,
+    "diastolic": 74,
+    "spo2": 99
+  },
+  {
+    "at": "2026-09-22T08:00:00+08:00",
+    "temperatureC": 36.6,
+    "pulse": 70,
+    "respiration": 17,
+    "systolic": 121,
+    "diastolic": 76,
+    "spo2": 99
+  },
+  {
+    "at": "2026-09-23T08:00:00+08:00",
+    "temperatureC": 36.5,
+    "pulse": 72,
+    "respiration": 18,
+    "systolic": 119,
+    "diastolic": 75,
+    "spo2": 99
+  }
+]

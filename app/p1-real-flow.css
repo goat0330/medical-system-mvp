@@ -1,0 +1,37 @@
+/* P1 page composition only. Visual primitives come from the Gold Master. */
+.p1-flow { display: grid; gap: 2rem; min-width: 0; }
+.p1-flow__hero { display: grid; grid-template-columns: 1.2fr .8fr; gap: 2rem; align-items: stretch; }
+.p1-flow__hero > .base-card { min-width: 0; }
+.p1-flow .base-card > p { margin: .6rem 0; color: var(--app-text-secondary); font-size: 1.4rem; line-height: 2.4rem; }
+.p1-grid-2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 2rem; align-items: start; }
+.p1-stage-list { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.p1-stage { display: flex; min-width: 0; flex-direction: column; align-items: flex-start; gap: .8rem; }
+.p1-stage .status-badge { margin-top: auto; }
+.p1-route-line { display: flex; flex-wrap: wrap; align-items: center; gap: .8rem 1.2rem; }
+.p1-route-line > span:not(.status-badge) { color: var(--app-text-secondary); font-size: 1.3rem; }
+.p1-switch { display: flex; flex-wrap: wrap; gap: .8rem; margin-top: 1.4rem; }
+.p1-payment { margin-top: 1.6rem; padding-top: 1.4rem; border-top: .1rem solid var(--app-border-faint); }
+.p1-payment > span { margin-right: 1rem; color: var(--app-text-secondary); font-size: 1.4rem; }
+.p1-input-table th, .p1-input-table td { height: auto; padding: 1.2rem 1.4rem; font-size: 1.4rem; line-height: 2.2rem; vertical-align: top; }
+.p1-input-table th { white-space: nowrap; }
+.p1-break-word { overflow-wrap: anywhere; }
+.p1-result { display: flex; min-height: 10rem; align-items: center; gap: 1.6rem; margin-top: 1.6rem; }
+.p1-result__code { flex: 0 0 auto; color: var(--app-color-primary); font-size: 2.8rem; font-weight: 700; line-height: 3.6rem; }
+.p1-result__copy { display: grid; gap: .6rem; min-width: 0; }
+.p1-result__copy strong { color: var(--app-text-strong); font-size: 1.6rem; line-height: 2.4rem; }
+.p1-result__copy > span:not(.status-badge) { color: var(--app-text-muted); font-size: 1.3rem; line-height: 2rem; }
+.p1-notice { display: grid; justify-items: start; gap: 1rem; margin-top: 1.4rem; }
+.p1-audit-summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.2rem; margin-top: 1.6rem; }
+.p1-audit-summary .metric-card { min-height: 10rem; padding: 1.6rem; }
+.p1-audit-summary .metric-card__value { font-size: 2rem; line-height: 2.8rem; }
+.p1-risk-list { display: grid; gap: 1.6rem; }
+.p1-risk-item { display: grid; justify-items: start; gap: 1rem; }
+.p1-history { padding-top: 1.2rem; color: var(--app-text-secondary); border-top: .1rem solid var(--app-border-faint); font-size: 1.3rem; line-height: 2.2rem; overflow-wrap: anywhere; }
+.p1-reset { margin-top: 1.6rem; }
+@media (max-width: 1240px) {
+  .p1-flow__hero, .p1-grid-2 { grid-template-columns: minmax(0, 1fr); }
+  .p1-stage-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 720px) {
+  .p1-stage-list, .p1-audit-summary { grid-template-columns: minmax(0, 1fr); }
+}

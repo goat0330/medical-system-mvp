@@ -1,0 +1,32 @@
+{
+  "datasetId": "GOLDEN-CN-INPATIENT-CHOLE-001",
+  "version": "1.0.0",
+  "createdAt": "2026-09-23",
+  "synthetic": true,
+  "patient": "虚构患者甲",
+  "episodeId": "EP-DEMO-001",
+  "scenario": "胆囊结石伴急性胆囊炎 → 腹腔镜下胆囊切除术 → 康复出院",
+  "principalDiagnosis": {
+    "code": "K80.000x002",
+    "name": "胆囊结石伴急性胆囊炎"
+  },
+  "primaryProcedure": {
+    "code": "51.2300",
+    "name": "腹腔镜下胆囊切除术"
+  },
+  "documents": 10,
+  "goldenDrg": "HC45",
+  "goldenDipOutcome": "EXCLUDED_PRINCIPAL_DIAGNOSIS:K80.000",
+  "feeTotal": 13400,
+  "contains": [
+    "完整Episode JSON",
+    "10份住院文书",
+    "生命体征/LIS/RIS/医嘱/病理",
+    "HIS费用与医保结算清单",
+    "DRG/DIP 3.0期望结果",
+    "3个故障注入样本",
+    "PostgreSQL schema + seed",
+    "Node自校验脚本",
+    "medical-system-mvp接入说明"
+  ]
+}

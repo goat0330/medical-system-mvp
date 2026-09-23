@@ -1,0 +1,150 @@
+body {
+  color: var(--app-text-document);
+}
+
+.settlement-paper-stack {
+  display: grid;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.settlement-sheet {
+  position: relative;
+  box-sizing: border-box;
+  width: 210mm;
+  min-height: 297mm;
+  padding: 12mm 12mm 17mm;
+  color: var(--app-text-document);
+  background: var(--app-white);
+  box-shadow: var(--app-shadow-document);
+  font-family: var(--app-font-family);
+  font-size: 9pt;
+  line-height: 1.45;
+}
+
+.settlement-sheet h1 {
+  margin: 2mm 0 4mm;
+  font-size: 15pt;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.settlement-sheet h2 {
+  margin: 3mm 0 1.5mm;
+  font-size: 10pt;
+}
+
+.sheet-head-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 2mm 3mm;
+  margin-bottom: 2mm;
+}
+
+.sheet-head-grid > div:nth-child(2) {
+  grid-column: span 2;
+}
+
+.sheet-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.sheet-table th,
+.sheet-table td {
+  padding: 1.2mm 1mm;
+  border: .4pt solid var(--app-text-document);
+  vertical-align: middle;
+  overflow-wrap: anywhere;
+  font-weight: 400;
+  background: transparent !important;
+}
+
+.sheet-table th {
+  text-align: center;
+}
+
+.sheet-table .sheet-value {
+  width: 100%;
+}
+
+.sheet-value {
+  display: inline-block;
+  min-width: 10mm;
+  min-height: 1.35em;
+  padding: 0 .5mm;
+  border-bottom: .4pt solid var(--app-text-document);
+  vertical-align: bottom;
+}
+
+.new-textbox-content {
+  min-height: 1.2em;
+  outline-color: var(--app-selected-border);
+}
+
+.sheet-line {
+  padding: 1.5mm 2mm;
+  border: .4pt solid var(--app-text-document);
+  border-top: 0;
+}
+
+.procedure-table {
+  font-size: 7pt;
+}
+
+.procedure-time-row td {
+  padding-left: 3mm;
+}
+
+.blank-row {
+  height: 10mm;
+  color: var(--app-text-muted);
+  text-align: center;
+}
+
+.fee-meta {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding: 2mm;
+  border: .4pt solid var(--app-text-document);
+}
+
+.fee-table th,
+.fee-table td {
+  padding: 1mm 1.3mm;
+}
+
+.total-row {
+  background: transparent !important;
+  font-weight: 700;
+}
+
+.payment-table {
+  margin-top: 2mm;
+  table-layout: auto;
+}
+
+.payment-table .payment-left-group { width: 24.5%; }
+.payment-table .payment-left-subcategory { width: 18.8%; }
+.payment-table .payment-left-amount,
+.payment-table .payment-parent-label { width: 14.2%; }
+.payment-table .payment-personal-label { width: 14.2%; }
+.payment-table .payment-personal-value { width: 14.1%; }
+
+.payment-table .payment-parent-label {
+  vertical-align: middle;
+}
+
+.payment-table .payment-group-end > * {
+  border-bottom-width: 1.1pt;
+}
+
+.payment-table .payment-group-start > * {
+  border-top-width: 1.1pt;
+}
+
+.sheet-source-note {
+  margin-top: 4mm;
+  color: var(--app-text-muted);
+  text-align: center;
+}
