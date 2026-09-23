@@ -22,6 +22,8 @@ Before modifying UI, read in order:
 - New tables MUST reuse ClinicalDataTable.
 - Status colors MUST use StatusBadge semantics from STATES.md.
 - Clinical documents and病案首页 MUST reuse Workbench.
+- In the document workbench, patient selection MUST use the existing `PatientSelector` / `PatientWorklist` pattern inside the 32rem `RecordNavigation`; selecting a patient switches the active `InpatientEpisode` and resets episode-derived transient state. Never add a permanent fourth column.
+- Keep the patient card, `住院病历` heading, and document-list column aligned to the same 1.8rem left inset.
 - DRG/DIP paths MUST use GroupingPath; rule explanations MUST use RuleTrace.
 - Audit issues MUST use RiskIssueCard; evidence MUST use EvidencePanel.
 - Voice remains an integration slot until the speech team supplies the contract implementation.

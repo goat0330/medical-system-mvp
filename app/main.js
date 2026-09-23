@@ -20,11 +20,37 @@ const NAV_ITEMS = [
   { id: 'audit', icon: 'audit', label: '智能医保审核' },
 ];
 
-const episode = createEpisodeFixture();
+const baseEpisode = createEpisodeFixture();
 const query = new URLSearchParams(location.search);
+const patientSpecs = [
+  { key: 'p-12', bed: '12床', name: '虚构患者甲', sex: '男', age: 43, episodeId: 'EP-DEMO-001', department: '普通外科', status: '当前患者', tone: 'blue', task: '待完成文书 2' },
+  { key: 'p-01', bed: '01床', name: '王某某', sex: '男', age: 62, episodeId: 'EP-DEMO-002', department: '普通外科', status: '新入院', tone: 'blue', task: '待完成文书 4' },
+  { key: 'p-03', bed: '03床', name: '李某某', sex: '女', age: 47, episodeId: 'EP-DEMO-003', department: '普通外科', status: '有待办', tone: 'amber', task: '质控问题 1' },
+  { key: 'p-08', bed: '08床', name: '陈某某', sex: '男', age: 55, episodeId: 'EP-DEMO-004', department: '普通外科', status: '住院中', tone: 'gray', task: '待完成文书 1' },
+  { key: 'p-16', bed: '16床', name: '赵某某', sex: '女', age: 71, episodeId: 'EP-DEMO-005', department: '普通外科', status: '今日出院', tone: 'green', task: '待确认出院记录' },
+  { key: 'p-18', bed: '18床', name: '周某某', sex: '男', age: 36, episodeId: 'EP-DEMO-006', department: '普通外科', status: '住院中', tone: 'gray', task: '暂无待办' },
+];
+const cloneEpisode = (source) => typeof structuredClone === 'function' ? structuredClone(source) : JSON.parse(JSON.stringify(source));
+const patientWorklist = patientSpecs.map((spec) => {
+  const value = cloneEpisode(baseEpisode);
+  const serial = spec.episodeId.slice(-3);
+  value.patient = { ...value.patient, patientId: `P-DEMO-${serial}`, name: spec.name, sex: spec.sex, age: spec.age };
+  value.inpatientNumber = spec.episodeId;
+  value.inpatientNo = spec.episodeId;
+  value.inpatientId = spec.episodeId;
+  value.episodeId = spec.episodeId;
+  value.medicalRecordNumber = `BA-DEMO-${serial}`;
+  value.claimSerialNumber = `JSQD-DEMO-${serial}`;
+  value.admission = { ...value.admission, department: spec.department, bed: spec.bed.replace('床', '') };
+  value.fees = { ...value.fees, businessSerialNumber: `FY-DEMO-${serial}`, invoiceNumber: `INV-DEMO-${serial}` };
+  return { ...spec, episode: value };
+});
+let episode = patientWorklist[0].episode;
 const state = {
   view: query.get('view') || 'overview',
   templateId: query.get('template') || 'admission',
+  selectedPatientKey: patientWorklist[0].key,
+  patientSelectorOpen: false,
   rightTab: 'qc',
   editorSession: null,
   editorMountToken: 0,
@@ -49,8 +75,11 @@ const diagnosisList = () => [episode.diagnoses?.principal, ...asArray(episode.di
 const chargeList = () => asArray(first(episode.fees?.items, episode.charges, episode.costs?.items));
 const totalAmount = () => chargeList().reduce((sum, item) => sum + Number(item.amount || 0), 0);
 const episodeTitle = () => first(patient().name, '合成病例 A-001');
-const episodeId = () => first(episode.inpatientNumber, episode.episodeId, 'EP-DEMO-001');
+const episodeId = () => first(episode.inpatientNumber, episode.inpatientNo, episode.episodeId, 'EP-DEMO-001');
 const currentTemplate = () => getDocumentTemplate(state.templateId);
+const currentPatientEntry = () => patientWorklist.find((item) => item.key === state.selectedPatientKey) || patientWorklist[0];
+const docConfirmKey = (id) => `${state.selectedPatientKey}:${id}`;
+const isDocConfirmed = (id) => state.confirmedDocs.has(docConfirmKey(id));
 
 function ensureSettlement() {
   if (!state.settlement) state.settlement = buildSettlementList(episode);
@@ -103,12 +132,33 @@ function renderOverview() {
   </div></div>`);
 }
 
+function renderPatientSelector() {
+  const current = currentPatientEntry();
+  return `<div class="patient-selector-block">
+    <div class="patient-selector-label">当前患者</div>
+    <button class="patient-selector-card ${state.patientSelectorOpen ? 'is-open' : ''}" data-action="toggle-patient-selector" aria-expanded="${state.patientSelectorOpen ? 'true' : 'false'}">
+      <div class="patient-selector-card__top"><strong><span>${escapeHtml(current.bed)}</span>${escapeHtml(episodeTitle())}</strong><span class="patient-selector-chevron">${icon('chevronDown')}</span></div>
+      <div class="patient-selector-card__meta">${escapeHtml(episodeId())} · ${escapeHtml(current.department)} · ${escapeHtml(current.sex)} · ${escapeHtml(current.age)}岁</div>
+      <div class="patient-selector-card__status">${statusBadge('住院 Episode', 'blue', true)}</div>
+    </button>
+    ${state.patientSelectorOpen ? `<div class="patient-selector-menu">
+      <div class="patient-selector-menu__head"><strong>我的住院患者</strong><span>${patientWorklist.length} 人</span></div>
+      <div class="patient-selector-menu__list">${patientWorklist.map((item) => `<button class="patient-option ${item.key === state.selectedPatientKey ? 'is-selected' : ''}" data-patient-key="${escapeHtml(item.key)}">
+        <div class="patient-option__top"><strong><span>${escapeHtml(item.bed)}</span>${escapeHtml(item.name)}</strong>${statusBadge(item.status, item.tone, true)}</div>
+        <div class="patient-option__meta">${escapeHtml(item.episodeId)} · ${escapeHtml(item.department)} · ${escapeHtml(item.sex)} · ${escapeHtml(item.age)}岁</div>
+        <div class="patient-option__task">${escapeHtml(item.task)}</div>
+      </button>`).join('')}</div>
+    </div>` : ''}
+  </div>`;
+}
+
 function renderRecordNavigation(activeId, frontPageOnly = false) {
   const groups = groupedTemplates();
-  return `<aside class="record-navigation"><header><strong>病历文书</strong><span>${frontPageOnly ? '首页' : '住院'}</span></header><div class="record-nav-scroll">${groups.map((group) => {
+  const templates = DOCUMENT_TEMPLATES.filter((item) => item.id !== 'frontpage');
+  return `<aside class="record-navigation">${renderPatientSelector()}<header class="record-navigation__title"><div><strong>住院病历</strong><span>${frontPageOnly ? 1 : templates.length} 份文书</span></div></header><div class="record-nav-scroll">${groups.map((group) => {
     const items = frontPageOnly ? group.items.filter((x) => x.id === 'frontpage') : group.items;
     if (!items.length) return '';
-    return `<div class="record-group-label">${escapeHtml(group.group)}</div>${items.map((item) => `<button class="record-nav-item ${activeId === item.id ? 'is-active' : ''}" data-template-id="${item.id}"><strong>${escapeHtml(item.name)}</strong><span>${state.confirmedDocs.has(item.id) ? '已确认' : '可编辑'}</span></button>`).join('')}`;
+    return `<div class="record-group-label">${escapeHtml(group.group)}</div>${items.map((item) => `<button class="record-nav-item ${activeId === item.id ? 'is-active' : ''}" data-template-id="${item.id}"><strong>${escapeHtml(item.name)}</strong><span>${isDocConfirmed(item.id) ? '已确认' : '可编辑'}</span></button>`).join('')}`;
   }).join('')}</div></aside>`;
 }
 
@@ -193,7 +243,7 @@ async function mountCurrentEditor() {
     const session = await mountMedicalRecordEditor({ container: host, template: currentTemplate(), episode });
     if (token !== state.editorMountToken) { session.destroy?.(); return; }
     state.editorSession = session;
-    if (state.confirmedDocs.has(currentTemplate().id)) session.setReadOnly?.(true);
+    if (isDocConfirmed(currentTemplate().id)) session.setReadOnly?.(true);
     mountQcUi();
   } catch (error) {
     host.innerHTML = `<div class="editor-error"><b>本地病历模板加载失败</b><p>${escapeHtml(error.message)}</p></div>`;
@@ -204,9 +254,9 @@ async function saveCurrentDocument(status = 'draft') {
   if (!state.editorSession) return flash('编辑器尚未准备完成。');
   const snapshot = await state.editorSession.snapshot();
   const record = saveDocumentSnapshot(currentTemplate(), episode, snapshot, status);
-  state.savedDocuments[currentTemplate().id] = record;
+  state.savedDocuments[docConfirmKey(currentTemplate().id)] = record;
   if (status === 'confirmed') {
-    state.confirmedDocs.add(currentTemplate().id);
+    state.confirmedDocs.add(docConfirmKey(currentTemplate().id));
     state.editorSession.setReadOnly?.(true);
   }
   flash(status === 'confirmed' ? '已记录医生确认并锁定当前文书。' : '当前文书草稿已保存到本地。');
@@ -230,6 +280,7 @@ function bindQcEvents() {
 }
 
 function bindEvents() {
+  document.querySelectorAll('[data-patient-key]').forEach((el) => el.addEventListener('click', () => selectPatient(el.dataset.patientKey)));
   document.querySelectorAll('[data-view]').forEach((el)=>el.addEventListener('click',()=>{ state.view = el.dataset.view; render(); }));
   document.querySelectorAll('[data-template-id]').forEach((el)=>el.addEventListener('click',()=>{ state.templateId = el.dataset.templateId; state.view='documents'; render(); }));
   document.querySelectorAll('[data-right-tab]').forEach((el)=>el.addEventListener('click',()=>{ state.rightTab = el.dataset.rightTab; render(); }));
@@ -239,6 +290,7 @@ function bindEvents() {
 }
 
 function handleAction(action, el) {
+  if (action === 'toggle-patient-selector') { state.patientSelectorOpen = !state.patientSelectorOpen; render(); return; }
   if (action === 'go-documents') { state.view='documents'; render(); return; }
   if (action === 'reload-editor') { void mountCurrentEditor(); return; }
   if (action === 'save-document') { void saveCurrentDocument('draft'); return; }
@@ -249,6 +301,34 @@ function handleAction(action, el) {
   if (action === 'refresh-grouping' || action === 'run-audit') { flash('已按当前 Episode 重新计算输入状态'); return; }
   if (action === 'select-risk') { state.selectedRiskId = el.dataset.riskId; render(); return; }
   if (action === 'review-risk') { state.reviewLog.set(el.dataset.riskId,{action:'reviewed',at:new Date().toISOString()}); flash('已记录人工复核动作'); return; }
+}
+
+function selectPatient(key) {
+  const next = patientWorklist.find((item) => item.key === key);
+  if (!next) return;
+  if (next.key === state.selectedPatientKey) {
+    state.patientSelectorOpen = false;
+    render();
+    return;
+  }
+  state.editorMountToken += 1;
+  state.editorSession?.destroy?.();
+  state.editorSession = null;
+  episode = next.episode;
+  state.selectedPatientKey = next.key;
+  state.patientSelectorOpen = false;
+  state.qcIgnored.clear();
+  state.qcShowAll = false;
+  state.rightTab = 'qc';
+  state.settlement = null;
+  state.settlementIssues = [];
+  state.snapshot = null;
+  state.response = null;
+  state.reconciliation = null;
+  state.selectedRiskId = null;
+  state.reviewLog = new Map();
+  state.toast = null;
+  render();
 }
 
 function flash(message) {

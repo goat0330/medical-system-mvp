@@ -7,6 +7,9 @@
 ### MedicalDocument
 复用原母版：最大宽度 70rem、白色纸张、1.6rem 圆角、文书标题下 0.2rem 深色分隔线。
 
+### PatientSelector / PatientWorklist
+患者选择器位于现有 32rem `RecordNavigation` 顶部，患者清单以浮层展开。选中项必须切换当前完整 `InpatientEpisode`，使病历、质控、首页、费用、结算和审核共用同一患者上下文；确认状态按患者隔离。
+
 ### GroupingPath
 唯一 DRG/DIP 分组路径表达：MDC → ADRG → DRG。不得在其他页面重新画箭头/节点体系。
 
