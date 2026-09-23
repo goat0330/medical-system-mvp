@@ -1,12 +1,11 @@
 import { lengthOfStay } from "../data/episode.js";
+import { buildClinicalFactContext } from "../clinical-facts/index.js";
 
 const money = (value) => Number(value || 0);
 const sum = (items, key) => items.reduce((total, item) => total + money(item[key]), 0);
 const clone = (value) => typeof structuredClone === "function" ? structuredClone(value) : JSON.parse(JSON.stringify(value));
-const normalize = (value) => String(value ?? "").replace(/[\s：:（）()【】\[\]_-]/g, "").toLowerCase();
 
-// Codes are the structured data-element codes used by the local HmEditor templates.
-// They are not the insurer's 193-item API dictionary.
+// Local template bindings. This remains an adapter registry, not the full insurer 193-item API dictionary.
 export const SETTLEMENT_SOURCE_FIELDS = Object.freeze({
   "institution.name": { name: "定点医疗机构名称", code: "DE08.10.013.00.012", aliases: ["医疗机构名称", "医院名称"] },
   "patient.name": { name: "姓名", code: "DE02.01.039.00", aliases: ["姓名", "患者姓名"] },
@@ -47,175 +46,57 @@ const SELECT_OPTIONS = Object.freeze({
   "discharge.readmissionWithin31Days": ["无", "有"],
 });
 
-export function settlementFieldCode(path) {
-  return SETTLEMENT_SOURCE_FIELDS[path]?.code || `SETTLEMENT.${path}`;
-}
-
-export function settlementFieldOptions(path) {
-  return SELECT_OPTIONS[path] || [];
-}
-
-export function getSettlementValue(target, path) {
-  return String(path || "").split(".").reduce((value, key) => value?.[key], target);
-}
-
+export function settlementFieldCode(path) { return SETTLEMENT_SOURCE_FIELDS[path]?.code || `SETTLEMENT.${path}`; }
+export function settlementFieldOptions(path) { return SELECT_OPTIONS[path] || []; }
+export function getSettlementValue(target, path) { return String(path || "").split(".").reduce((value, key) => value?.[key], target); }
 export function setSettlementValue(target, path, value) {
-  const parts = String(path || "").split(".");
-  let cursor = target;
-  for (let index = 0; index < parts.length - 1; index += 1) {
-    const key = parts[index];
-    const next = parts[index + 1];
-    if (!cursor[key]) cursor[key] = /^\d+$/.test(next) ? [] : {};
-    cursor = cursor[key];
-  }
-  if (parts.length) cursor[parts.at(-1)] = value;
-  return target;
+  const parts = String(path || "").split("."); let cursor = target;
+  for (let index = 0; index < parts.length - 1; index += 1) { const key = parts[index]; const next = parts[index + 1]; if (!cursor[key]) cursor[key] = /^\d+$/.test(next) ? [] : {}; cursor = cursor[key]; }
+  if (parts.length) cursor[parts.at(-1)] = value; return target;
 }
-
-function feeRow(episode, category, label) {
-  const items = (episode.fees.items || []).filter((item) => item.category === category);
-  return {
-    label,
-    amount: sum(items, "amount"),
-    classA: sum(items, "classA"),
-    classB: sum(items, "classB"),
-    selfPay: sum(items, "selfPay"),
-    other: sum(items, "other"),
-    source: items.length ? "HIS费用明细" : "未映射",
-  };
-}
-
-export function recalculateSettlementTotals(list) {
-  list.fees.totals = {
-    amount: sum(list.fees.rows, "amount"),
-    classA: sum(list.fees.rows, "classA"),
-    classB: sum(list.fees.rows, "classB"),
-    selfPay: sum(list.fees.rows, "selfPay"),
-    other: sum(list.fees.rows, "other"),
-  };
-  return list.fees.totals;
-}
+function feeRow(episode, category, label) { const items = (episode.fees.items || []).filter((item) => item.category === category); return { label, amount: sum(items,"amount"), classA: sum(items,"classA"), classB: sum(items,"classB"), selfPay: sum(items,"selfPay"), other: sum(items,"other"), source: items.length ? "HIS费用明细" : "未映射" }; }
+export function recalculateSettlementTotals(list) { list.fees.totals = { amount: sum(list.fees.rows,"amount"), classA: sum(list.fees.rows,"classA"), classB: sum(list.fees.rows,"classB"), selfPay: sum(list.fees.rows,"selfPay"), other: sum(list.fees.rows,"other") }; return list.fees.totals; }
 
 export function buildSettlementList(sourceEpisode, { sourceDocuments = [], overrides = {} } = {}) {
-  const episode = clone(sourceEpisode);
-  const procedures = episode.procedures || [];
-  const feeRows = [
-    ["bed", "床位费"], ["consultation", "诊察费"], ["examination", "检查费"], ["laboratory", "化验费"],
-    ["treatment", "治疗费"], ["surgery", "手术费"], ["nursing", "护理费"], ["material", "卫生材料费"],
-    ["westernMedicine", "西药费"], ["tcm", "中药饮片费"], ["patentMedicine", "中成药费"], ["general", "一般诊疗费"],
-    ["registration", "挂号费"], ["other", "其他费"],
-  ].map(([category, label]) => feeRow(episode, category, label));
+  const episode = clone(sourceEpisode); const procedures = episode.procedures || [];
+  const feeRows = [["bed","床位费"],["consultation","诊察费"],["examination","检查费"],["laboratory","化验费"],["treatment","治疗费"],["surgery","手术费"],["nursing","护理费"],["material","卫生材料费"],["westernMedicine","西药费"],["tcm","中药饮片费"],["patentMedicine","中成药费"],["general","一般诊疗费"],["registration","挂号费"],["other","其他费"]].map(([category,label])=>feeRow(episode,category,label));
   const list = {
-    objectType: "medical_security_fund_settlement_list",
-    templateVersion: "国家医保局193项样式/P0版式复刻",
-    sourceReference: "references/医保结算清单（193项）.pdf",
-    episodeId: episode.episodeId,
-    claimSerialNumber: episode.claimSerialNumber,
-    institution: episode.institution,
-    insurance: episode.insurance,
-    medicalRecordNumber: episode.medicalRecordNumber,
-    inpatientNumber: episode.inpatientNumber,
-    reportDate: new Date().toISOString().slice(0, 10),
-    patient: episode.patient,
-    outpatientSpecialDisease: { department: "", visitDate: "", diseaseName: "", diseaseCode: "", procedureName: "", procedureCode: "" },
-    inpatient: {
-      medicalType: episode.admission.medicalType,
-      admissionSource: episode.admission.source,
-      treatmentCategory: episode.admission.treatmentCategory,
-      admissionAt: episode.admission.at,
-      admissionDepartment: episode.admission.department,
-      transferDepartment: "",
-      dischargeAt: episode.discharge.at,
-      dischargeDepartment: episode.discharge.department,
-      lengthOfStay: lengthOfStay(episode),
-      outpatientWestern: episode.diagnoses.outpatientWestern,
-      dischargeWestern: [episode.diagnoses.principal, ...episode.diagnoses.secondary],
-      principalDiagnosis: episode.diagnoses.principal,
-      secondaryDiagnoses: episode.diagnoses.secondary,
-      diagnosisCodeCount: 1 + episode.diagnoses.secondary.length,
-    },
-    procedures: { primary: procedures[0] || null, others: procedures.slice(1), codeCount: procedures.length },
-    clinicalProcess: episode.clinicalProcess,
-    discharge: episode.discharge,
-    fees: {
-      businessSerialNumber: episode.fees.businessSerialNumber,
-      invoiceCode: episode.fees.invoiceCode,
-      invoiceNumber: episode.fees.invoiceNumber,
-      settlementStart: episode.fees.settlementStart,
-      settlementEnd: episode.fees.settlementEnd,
-      rows: feeRows,
-      totals: {},
-    },
-    payment: episode.payment,
-    fieldSources: {},
+    objectType:"medical_security_fund_settlement_list", templateVersion:"国家医保局193项样式/P0版式复刻", sourceReference:"references/医保结算清单（193项）.pdf",
+    episodeId:episode.episodeId, claimSerialNumber:episode.claimSerialNumber, institution:episode.institution, insurance:episode.insurance, medicalRecordNumber:episode.medicalRecordNumber, inpatientNumber:episode.inpatientNumber, reportDate:new Date().toISOString().slice(0,10), patient:clone(episode.patient),
+    outpatientSpecialDisease:{department:"",visitDate:"",diseaseName:"",diseaseCode:"",procedureName:"",procedureCode:""},
+    inpatient:{medicalType:episode.admission.medicalType,admissionSource:episode.admission.source,treatmentCategory:episode.admission.treatmentCategory,admissionAt:episode.admission.at,admissionDepartment:episode.admission.department,transferDepartment:"",dischargeAt:episode.discharge.at,dischargeDepartment:episode.discharge.department,lengthOfStay:lengthOfStay(episode),outpatientWestern:episode.diagnoses.outpatientWestern,dischargeWestern:[episode.diagnoses.principal,...episode.diagnoses.secondary],principalDiagnosis:clone(episode.diagnoses.principal),secondaryDiagnoses:clone(episode.diagnoses.secondary),diagnosisCodeCount:1+episode.diagnoses.secondary.length},
+    procedures:{primary:procedures[0]?clone(procedures[0]):null,others:clone(procedures.slice(1)),codeCount:procedures.length}, clinicalProcess:clone(episode.clinicalProcess), discharge:clone(episode.discharge),
+    fees:{businessSerialNumber:episode.fees.businessSerialNumber,invoiceCode:episode.fees.invoiceCode,invoiceNumber:episode.fees.invoiceNumber,settlementStart:episode.fees.settlementStart,settlementEnd:episode.fees.settlementEnd,rows:feeRows,totals:{}}, payment:clone(episode.payment),
+    fieldSources:{}, fieldFactRefs:{}, fieldEvidenceRefs:{}, factConflicts:[], clinicalFactContext:null,
   };
   recalculateSettlementTotals(list);
 
-  const priority = { frontpage: 100, discharge: 90, surgery: 80, "attending-round": 70, "attending-first-round": 65, "first-progress": 60, "daily-progress": 55, preop: 50, admission: 40 };
-  for (const [path, binding] of Object.entries(SETTLEMENT_SOURCE_FIELDS)) {
-    list.fieldSources[path] = "Episode 演示基线";
-    const candidates = sourceDocuments.flatMap((document, documentIndex) => (document.data || document.snapshot?.data || []).map((field, fieldIndex) => ({
-      document, field, documentIndex, fieldIndex,
-      priority: priority[document.id || document.templateId] || 0,
-      savedAt: Date.parse(document.savedAt || "") || 0,
-    }))).filter(({ field }) => {
-      const value = field.keyValue && typeof field.keyValue === "object" ? field.keyValue.value ?? field.keyValue.code : field.keyValue;
-      const named = (binding.aliases || []).some((name) => normalize(name) === normalize(field.keyName));
-      return (field.keyCode === binding.code || named) && String(value ?? "").trim() && normalize(value) !== normalize(field.keyName);
-    }).sort((a, b) => b.priority - a.priority || b.savedAt - a.savedAt || a.documentIndex - b.documentIndex || b.fieldIndex - a.fieldIndex);
-    const match = candidates[0];
-    if (!match) continue;
-    const value = match.field.keyValue && typeof match.field.keyValue === "object" ? match.field.keyValue.value ?? match.field.keyValue.code : match.field.keyValue;
-    setSettlementValue(list, path, value);
-    list.fieldSources[path] = match.document.name || match.document.templateName || match.document.id || "已保存病历";
+  // Single source of truth: resolve patient facts first, then project confirmed facts into settlement fields.
+  const context = sourceEpisode.clinicalFactContext || buildClinicalFactContext({ episode: sourceEpisode, documentSnapshots: sourceDocuments.length ? sourceDocuments : (sourceEpisode.documentSnapshots || []) });
+  list.clinicalFactContext = context;
+  list.factRevision = context.revision;
+  list.factConflicts = context.conflicts.filter((x) => x.impactScope.includes('SETTLEMENT'));
+  for (const path of Object.keys(SETTLEMENT_SOURCE_FIELDS)) list.fieldSources[path] = "Episode 基线";
+  const projection = context.projections?.settlement?.fields || {};
+  for (const [path, projected] of Object.entries(projection)) {
+    setSettlementValue(list, path, projected.value);
+    list.fieldSources[path] = "患者事实层";
+    list.fieldFactRefs[path] = projected.factId;
+    list.fieldEvidenceRefs[path] = projected.evidenceRefs || [];
   }
-  for (const [path, value] of Object.entries(overrides)) {
-    setSettlementValue(list, path, value);
-    list.fieldSources[path] = "手动修改";
-  }
-  recalculateSettlementTotals(list);
-  return list;
+  for (const [path, value] of Object.entries(overrides)) { setSettlementValue(list, path, value); list.fieldSources[path] = "手动修改"; list.fieldFactRefs[path] = null; list.fieldEvidenceRefs[path] = []; }
+  recalculateSettlementTotals(list); return list;
 }
 
 export function validateSettlementList(list) {
-  const issues = [];
-  const required = (value, field, label) => {
-    if (value === undefined || value === null || String(value).trim() === "") {
-      issues.push({ severity: "error", code: "REQUIRED_FIELD_MISSING", field, message: `${label}不能为空。` });
-    }
-  };
-  required(list.claimSerialNumber, "claimSerialNumber", "清单流水号");
-  required(list.institution?.name, "institution.name", "定点医疗机构名称");
-  required(list.institution?.code, "institution.code", "定点医疗机构代码");
-  required(list.insurance?.number, "insurance.number", "医保编号");
-  required(list.medicalRecordNumber, "medicalRecordNumber", "病案号");
-  required(list.patient?.name, "patient.name", "姓名");
-  required(list.patient?.sex, "patient.sex", "性别");
-  required(list.patient?.idType, "patient.idType", "患者证件类别");
-  required(list.patient?.idNumber, "patient.idNumber", "患者证件号码");
-  required(list.inpatient?.admissionAt, "inpatient.admissionAt", "入院时间");
-  required(list.inpatient?.dischargeAt, "inpatient.dischargeAt", "出院时间");
-  required(list.inpatient?.principalDiagnosis?.name, "inpatient.principalDiagnosis.name", "主要诊断");
-  required(list.inpatient?.principalDiagnosis?.code, "inpatient.principalDiagnosis.code", "主要诊断代码");
-  required(list.discharge?.method, "discharge.method", "离院方式");
-
-  const start = new Date(list.inpatient.admissionAt);
-  const end = new Date(list.inpatient.dischargeAt);
-  if (Number.isFinite(start.getTime()) && Number.isFinite(end.getTime()) && end <= start) {
-    issues.push({ severity: "error", code: "TIME_ORDER_INVALID", field: "inpatient.dischargeAt", message: "出院时间必须晚于入院时间。" });
+  const issues=[]; const required=(value,field,label)=>{if(value===undefined||value===null||String(value).trim()==="")issues.push({severity:"error",code:"REQUIRED_FIELD_MISSING",field,message:`${label}不能为空。`});};
+  required(list.claimSerialNumber,"claimSerialNumber","清单流水号"); required(list.institution?.name,"institution.name","定点医疗机构名称"); required(list.institution?.code,"institution.code","定点医疗机构代码"); required(list.insurance?.number,"insurance.number","医保编号"); required(list.medicalRecordNumber,"medicalRecordNumber","病案号"); required(list.patient?.name,"patient.name","姓名"); required(list.patient?.sex,"patient.sex","性别"); required(list.patient?.idType,"patient.idType","患者证件类别"); required(list.patient?.idNumber,"patient.idNumber","患者证件号码"); required(list.inpatient?.admissionAt,"inpatient.admissionAt","入院时间"); required(list.inpatient?.dischargeAt,"inpatient.dischargeAt","出院时间"); required(list.inpatient?.principalDiagnosis?.name,"inpatient.principalDiagnosis.name","主要诊断"); required(list.inpatient?.principalDiagnosis?.code,"inpatient.principalDiagnosis.code","主要诊断代码"); required(list.discharge?.method,"discharge.method","离院方式");
+  for(const conflict of list.factConflicts||[]){
+    issues.push({severity:conflict.blocking?'error':'warning',code:'FACT_CONFLICT_UNRESOLVED',field:conflict.concept,message:conflict.reason,conflictId:conflict.conflictId,evidenceRefs:conflict.candidates?.map((x)=>x.evidenceId).filter(Boolean)||[],impactScope:conflict.impactScope||[]});
   }
-  const itemTotal = sum(list.fees.rows, "amount");
-  if (Math.abs(itemTotal - money(list.fees.totals.amount)) > 0.01) {
-    issues.push({ severity: "error", code: "FEE_TOTAL_MISMATCH", field: "fees.totals.amount", message: "费用项目合计与金额合计不一致。" });
-  }
-  const paymentTotal = money(list.payment.fund) + money(list.payment.individualBurden);
-  if (paymentTotal > 0 && Math.abs(paymentTotal - itemTotal) > 0.01) {
-    issues.push({ severity: "warning", code: "PAYMENT_TOTAL_CHECK", field: "payment", message: "基金支付 + 个人负担与住院费用金额合计不一致，请核对结算结果。" });
-  }
-  issues.valid = !issues.some((issue) => issue.severity === "error");
-  return issues;
+  const start=new Date(list.inpatient.admissionAt),end=new Date(list.inpatient.dischargeAt);if(Number.isFinite(start.getTime())&&Number.isFinite(end.getTime())&&end<=start)issues.push({severity:"error",code:"TIME_ORDER_INVALID",field:"inpatient.dischargeAt",message:"出院时间必须晚于入院时间。"});
+  const itemTotal=sum(list.fees.rows,"amount");if(Math.abs(itemTotal-money(list.fees.totals.amount))>0.01)issues.push({severity:"error",code:"FEE_TOTAL_MISMATCH",field:"fees.totals.amount",message:"费用项目合计与金额合计不一致。"});
+  const paymentTotal=money(list.payment.fund)+money(list.payment.individualBurden);if(paymentTotal>0&&Math.abs(paymentTotal-itemTotal)>0.01)issues.push({severity:"warning",code:"PAYMENT_TOTAL_CHECK",field:"payment",message:"基金支付 + 个人负担与住院费用金额合计不一致，请核对结算结果。"});
+  issues.valid=!issues.some((issue)=>issue.severity==="error");return issues;
 }
-
-export function formatMoney(value) {
-  return money(value).toFixed(2);
-}
+export function formatMoney(value){return money(value).toFixed(2);}

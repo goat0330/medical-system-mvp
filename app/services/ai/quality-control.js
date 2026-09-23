@@ -5,6 +5,11 @@ export async function runQualityControl(input) {
     body: JSON.stringify(input),
   });
   const payload = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(payload.error?.message || `质控未完成（HTTP ${response.status}）。`);
+  if (!response.ok) {
+    const error = new Error(payload.error?.message || `质控未完成（HTTP ${response.status}）。`);
+    error.code = payload.error?.code || 'QC_REQUEST_FAILED';
+    error.trace = payload.error?.trace || null;
+    throw error;
+  }
   return payload;
 }

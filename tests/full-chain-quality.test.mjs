@@ -1,0 +1,22 @@
+import assert from 'node:assert/strict';
+import { createEpisodeFixture } from '../app/data/episode.js';
+import { buildClinicalFactContext } from '../app/clinical-facts/index.js';
+import { buildSettlementList } from '../app/domain/settlement.js';
+import { runFullChainQualityControl, QUALITY_DOMAINS } from '../app/clinical-facts/quality/full-chain-quality.js';
+
+const episode=createEpisodeFixture();
+const facts=buildClinicalFactContext({episode,documentSnapshots:[]});
+const settlement=buildSettlementList(episode);
+const groupingRun={groupingResult:{status:'INVALID_INPUT',errors:[{code:'DRG_PRINCIPAL_DIAGNOSIS_UNSUPPORTED',message:'测试：主要诊断不受当前DRG规则支持'}]},inputIntegrity:{errors:[{code:'DRG_PRINCIPAL_DIAGNOSIS_UNSUPPORTED',message:'测试：主要诊断不受当前DRG规则支持'}]}};
+const auditRun={risks:[{riskId:'TEST-RISK',type:'CLAIM_DETAIL_DUPLICATE',severity:'medium',title:'测试重复收费',reason:'测试风险',evidenceBundle:{evidence:[{evidenceId:'EV-TEST'}]}}]};
+const run=runFullChainQualityControl({episode,documentSnapshots:[],factContext:facts,settlement,groupingRun,auditRun});
+assert.equal(run.domains.length,QUALITY_DOMAINS.length);
+assert.equal(run.domains.length,6);
+assert.ok(run.domains.some((x)=>x.id==='GROUPING'&&x.status==='BLOCKED'));
+assert.ok(run.issues.some((x)=>x.qcDomain==='GROUPING'&&x.type==='GROUPING_INPUT_INVALID'));
+assert.ok(run.issues.some((x)=>x.qcDomain==='INSURANCE_AUDIT'&&x.type==='CLAIM_DETAIL_DUPLICATE'));
+const notRun=runFullChainQualityControl({episode,documentSnapshots:[],factContext:facts,settlement});
+assert.equal(notRun.domains.find((x)=>x.id==='DOCUMENT').status,'NOT_RUN');
+assert.equal(notRun.domains.find((x)=>x.id==='CROSS_DOCUMENT').status,'NOT_RUN');
+assert.equal(notRun.finalStatus,'PARTIAL');
+console.log('PASS six-domain full-chain quality control');
