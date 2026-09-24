@@ -50,6 +50,7 @@ const state = {
   aiQcHasRun: false,
   aiQcBusy: false,
   aiQcError: '',
+  aiQcTrace: null,
   aiModels: initialAiModels,
   activeAiModelId: initialAiModels.find((model) => model.isDefault)?.id || initialAiModels[0]?.id || '',
   aiModelPickerOpen: false,
@@ -293,6 +294,60 @@ function aiModelStatus(model) {
   return { label: '待测试', tone: 'amber' };
 }
 
+function createAiQcTrace(fields, model) {
+  const documents = new Map();
+  fields.forEach((field) => {
+    const id = field.documentId || field.documentTitle || 'unknown';
+    const document = documents.get(id) || { title: field.documentTitle || '未命名文书', count: 0 };
+    document.count += 1;
+    documents.set(id, document);
+  });
+  const emptyCount = fields.filter((field) => !String(field.text || '').trim()).length;
+  const sources = [...documents.values()].map((document) => `${document.title}（${document.count}字段）`).join('、');
+  return {
+    input: {
+      status: 'done',
+      detail: `已整理 ${documents.size} 份文书、${fields.length} 个字段（${emptyCount} 个空字段）。材料：${sources || '无'}`,
+    },
+    knowledgeRetrieval: {
+      status: 'not_configured',
+      detail: '当前未接入医学规范/指南知识库，本次未检索外部临床资料；DRG/DIP 3.0 分组规则未参与本次病历质控。',
+    },
+    modelCall: {
+      status: 'running',
+      detail: `请求已发送至本地质控服务，当前模型：${model.name}（${model.modelId}），等待模型响应。`,
+    },
+    validation: {
+      status: 'waiting',
+      detail: '等待校验返回格式、问题字段和原文证据锚点。',
+    },
+  };
+}
+
+function aiQcTracePanel() {
+  const trace = state.aiQcTrace;
+  if (!trace) return '';
+  const statusMap = {
+    done: ['已完成', 'green'],
+    running: ['进行中', 'blue'],
+    waiting: ['待执行', 'gray'],
+    not_configured: ['未接入', 'amber'],
+    failed: ['失败', 'red'],
+    skipped: ['未执行', 'gray'],
+    truncated: ['输出截断', 'red'],
+  };
+  const rows = [
+    ['送检材料整理', trace.input],
+    ['医学知识库检索', trace.knowledgeRetrieval],
+    ['模型调用', trace.modelCall],
+    ['结果与原文校验', trace.validation],
+  ].map(([title, step]) => {
+    const [label, tone] = statusMap[step?.status] || ['待核验', 'gray'];
+    return `<li class="ai-qc-trace__step"><div class="ai-qc-trace__heading"><strong>${escapeHtml(title)}</strong>${statusBadge(label, tone, true)}</div><p>${escapeHtml(step?.detail || '')}</p></li>`;
+  }).join('');
+  return `<details class="base-card base-card--flat ai-qc-trace" open><summary><strong>执行过程与来源</strong><span>查看本次调用记录</span></summary><p class="ai-qc-trace__note">展示实际处理阶段和数据来源，不展示模型隐藏的逐字思维链。</p><ol>${rows}</ol></details>`;
+}
+
 function aiQcContent() {
   const findings = state.aiQcFindings;
   const model = currentAiModel();
@@ -307,7 +362,7 @@ function aiQcContent() {
     : state.aiQcBusy
       ? '<div class="right-panel-placeholder">AI 质控中，请稍候…</div>'
       : state.aiQcHasRun
-        ? '<div class="success-box">本次运行未发现可报告的质控问题。</div>'
+        ? '<div class="success-box">AI 本次未返回可定位的问题；这不代表病历没有缺陷，请结合规则质控和人工审核。</div>'
         : '<div class="right-panel-placeholder">运行后在这里查看逐条质控问题和修改建议，建议需由医生审核采纳。</div>';
   return `<div class="ai-qc-panel">
     <section class="base-card base-card--flat ai-model-card"><div class="ai-model-card__top"><h3>当前 AI 模型</h3><div class="ai-model-switch-wrap"><button type="button" class="app-button ai-model-switch" data-ai-model-switch aria-expanded="${state.aiModelPickerOpen}">切换模型 ${icon('chevronDown')}</button>${modelPicker}</div></div>
@@ -321,6 +376,7 @@ function aiQcContent() {
     </section>
     <button type="button" class="app-button app-button--primary ai-qc-run-button ${state.aiQcBusy ? 'is-loading' : ''}" data-ai-qc-run ${state.aiQcBusy || scopeCount === 0 ? 'disabled' : ''}>${state.aiQcBusy ? icon('spinner') : icon('play')}<span>${state.aiQcBusy ? 'AI 质控中…' : '运行 AI 质控'}</span></button>
     <p class="ai-qc-privacy-note">所选文书内容会发送至当前配置的模型服务。请仅使用虚构或已获授权的数据；AI 结果需由医生审核，不会自动修改病历。</p>
+    ${aiQcTracePanel()}
     ${state.aiQcError ? `<div class="ai-qc-error" role="alert">${escapeHtml(state.aiQcError)}</div>` : ''}
     <div class="history-section-body qc-issue-list ai-qc-results">${resultContent}</div>
   </div>`;
@@ -492,6 +548,10 @@ async function openDocumentTab(templateId) {
     closeQcPopover();
     if (!state.openDocumentTabs.includes(templateId)) state.openDocumentTabs.push(templateId);
     state.templateId = templateId;
+    state.aiQcFindings = [];
+    state.aiQcHasRun = false;
+    state.aiQcError = '';
+    state.aiQcTrace = null;
     state.view = 'documents';
     state.patientSelectorOpen = false;
     restoreDocumentQcState(templateId);
@@ -577,6 +637,7 @@ function handleMedicalEditorChange({ fields = [] } = {}) {
   state.aiQcFindings = [];
   state.aiQcHasRun = false;
   state.aiQcError = '';
+  state.aiQcTrace = null;
   refreshPassiveDocumentQc(fields);
 }
 
@@ -701,7 +762,7 @@ function snapshotAiFields(template) {
     text: aiFieldValue(item.keyValue ?? item.text),
     documentId: template.id,
     documentTitle: template.name,
-  })).filter((field) => field.fieldId && field.code && field.text && !isDirectIdentityField(field.name));
+  })).filter((field) => field.fieldId && field.code && !isDirectIdentityField(field.name));
   if (fields.length || !String(snapshot?.text || '').trim()) return fields;
   return [{ fieldId: `${template.id}:document-text`, code: 'DOCUMENT.TEXT', name: '文书正文', text: String(snapshot.text).trim().slice(0, 12_000), documentId: template.id, documentTitle: template.name }];
 }
@@ -712,7 +773,7 @@ function collectAiQcFields(scopes, templateId, editorSession) {
   const add = (items) => fields.push(...items);
   const liveFields = (template) => asArray(editorSession?.getStructuredFields?.()).map((field) => ({
     fieldId: field.fieldId, code: field.code, name: field.name, text: String(field.text || '').trim(), documentId: template.id, documentTitle: template.name,
-  })).filter((field) => field.name && field.code && field.fieldId && field.text && !isDirectIdentityField(field.name));
+  })).filter((field) => field.name && field.code && field.fieldId && !isDirectIdentityField(field.name));
   if (scopes.currentDocument) add(liveFields(current));
   if (scopes.relatedDocuments) {
     DOCUMENT_TEMPLATES.filter((template) => template.id !== current.id).forEach((template) => add(snapshotAiFields(template)));
@@ -782,6 +843,7 @@ async function runAiQc(focusIssueId = '') {
   state.aiQcBusy = true;
   state.aiQcHasRun = false;
   state.aiQcError = '';
+  state.aiQcTrace = createAiQcTrace(fields, model);
   state.rightTab = 'ai';
   closeQcPopover();
   refreshRightPanel();
@@ -814,6 +876,20 @@ async function runAiQc(focusIssueId = '') {
         quote: finding.quote || '',
       }] : []),
     }));
+    const returnedTrace = payload.trace || {};
+    const usage = returnedTrace.modelCall?.usage;
+    const tokenSummary = usage?.total_tokens ? `；本次输入/输出 ${usage.prompt_tokens ?? '?'} / ${usage.completion_tokens ?? '?'} tokens` : '';
+    state.aiQcTrace.modelCall = {
+      status: 'done',
+      detail: `${returnedTrace.model?.name || model.name}（${returnedTrace.model?.modelId || model.modelId}）已返回，结束状态 ${returnedTrace.modelCall?.finishReason || '未知'}${tokenSummary}。`,
+    };
+    state.aiQcTrace.validation = {
+      status: 'done',
+      detail: `结果结构校验通过；${returnedTrace.validation?.findingCount ?? state.aiQcFindings.length} 条问题，${returnedTrace.validation?.anchorCount ?? 0} 个证据锚点与送检字段核验。${state.aiQcFindings.length ? '' : '未返回问题不等于病历无缺陷。'}`,
+    };
+    if (returnedTrace.input) {
+      state.aiQcTrace.input.detail = `服务端收到 ${returnedTrace.input.documentCount} 份文书、${returnedTrace.input.fieldCount} 个字段（${returnedTrace.input.emptyFieldCount} 个空字段）。${state.aiQcTrace.input.detail.split('材料：')[1] ? `材料：${state.aiQcTrace.input.detail.split('材料：')[1]}` : ''}`;
+    }
     state.aiQcHasRun = true;
     state.aiQcError = '';
     state.aiQcBusy = false;
@@ -831,7 +907,41 @@ async function runAiQc(focusIssueId = '') {
     }
   } catch (error) {
     if (state.selectedPatientKey !== patientKey || currentTemplate().id !== templateId || state.editorSession !== editorSession) return;
+    if (!state.aiQcTrace) state.aiQcTrace = createAiQcTrace(fields, model);
     state.aiQcError = error instanceof Error ? error.message : 'AI 质控请求失败，请检查模型配置和本地服务后重试。';
+    const trace = error.trace || {};
+    const failedStage = trace.failedStage || 'model_request';
+    const modelCallStatus = trace.modelCallStatus || 'failed_or_unconfirmed';
+    const stageTitles = {
+      model_request: '模型请求',
+      provider_response: '模型服务响应解析',
+      model_output: '模型输出',
+      json_parse: 'JSON 解析',
+      schema_validation: '结果结构校验',
+      evidence_validation: '原文证据核验',
+      request_validation: '请求校验',
+    };
+    const modelReturned = ['returned', 'truncated', 'empty'].includes(modelCallStatus);
+    state.aiQcTrace.modelCall = {
+      status: modelCallStatus === 'truncated' ? 'truncated' : modelReturned ? 'done' : 'failed',
+      detail: modelReturned
+        ? `模型服务有响应，但后续在“${stageTitles[failedStage] || failedStage}”阶段${modelCallStatus === 'truncated' ? '输出被截断' : '未通过核验'}；原始输出未保存或展示。`
+        : modelCallStatus === 'not_started' ? '请求未进入外部模型调用。' : '本地服务未能确认模型成功返回，请查看失败阶段。',
+    };
+    state.aiQcTrace.validation = {
+      status: failedStage === 'json_parse' || failedStage === 'schema_validation' || failedStage === 'evidence_validation' || failedStage === 'model_output' || failedStage === 'provider_response' ? 'failed' : 'skipped',
+      detail: failedStage === 'evidence_validation'
+        ? '至少一条引用字段或原文片段无法与本次送检材料逐字核对，因此没有展示该模型结果。'
+        : failedStage === 'schema_validation'
+          ? '模型返回内容缺少必需字段或字段类型不符合接口约定。'
+          : failedStage === 'json_parse'
+            ? '模型返回正文不是可解析的 JSON。'
+            : failedStage === 'model_output'
+              ? '模型未返回正文或输出达到长度上限。'
+              : failedStage === 'provider_response'
+                ? '模型服务返回的数据包无法解析。'
+                : '模型请求未成功完成，结果校验未执行。',
+    };
   } finally {
     if (state.selectedPatientKey !== patientKey || currentTemplate().id !== templateId || state.editorSession !== editorSession) return;
     state.aiQcBusy = false;
@@ -927,7 +1037,10 @@ function bindAiAssistantEvents(root = document) {
           || models[0]?.id
           || '';
         state.aiModelPickerOpen = false;
+        state.aiQcFindings = [];
+        state.aiQcHasRun = false;
         state.aiQcError = '';
+        state.aiQcTrace = null;
         refreshRightPanel();
         flash('模型配置已保存');
       },
@@ -936,11 +1049,18 @@ function bindAiAssistantEvents(root = document) {
   root.querySelectorAll('[data-ai-model-activate]').forEach((el) => el.addEventListener('click', () => {
     state.activeAiModelId = el.dataset.aiModelActivate;
     state.aiModelPickerOpen = false;
+    state.aiQcFindings = [];
+    state.aiQcHasRun = false;
     state.aiQcError = '';
+    state.aiQcTrace = null;
     refreshRightPanel();
   }));
   root.querySelectorAll('[data-ai-scope]').forEach((el) => el.addEventListener('change', () => {
     state.aiQcScopes[el.dataset.aiScope] = el.checked;
+    state.aiQcFindings = [];
+    state.aiQcHasRun = false;
+    state.aiQcError = '';
+    state.aiQcTrace = null;
     const runButton = root.querySelector('[data-ai-qc-run]');
     if (runButton) runButton.disabled = state.aiQcBusy || !Object.values(state.aiQcScopes).some(Boolean);
   }));
@@ -1004,6 +1124,7 @@ function selectPatient(key) {
   state.aiQcHasRun = false;
   state.aiQcBusy = false;
   state.aiQcError = '';
+  state.aiQcTrace = null;
   state.selectedQcIssueId = '';
   state.rightTab = 'qc';
   state.settlement = null;

@@ -19,7 +19,7 @@ assert.match(main, /modelConfigId: activeModelId/);
 assert.doesNotMatch(main, /data-ai-api-key|data-ai-qc-form/);
 assert.doesNotMatch(main, /DeepSeek|deepseek-flash/i);
 const aiFieldCollection = main.slice(main.indexOf('function snapshotAiFields'), main.indexOf('async function runAiQc'));
-assert.match(aiFieldCollection, /field\.fieldId && !isDirectIdentityField\(field\.name\)/);
+assert.match(aiFieldCollection, /field\.fieldId && field\.code && !isDirectIdentityField\(field\.name\)/);
 assert.doesNotMatch(aiFieldCollection, /field\.text && !isDirectIdentityField\(field\.name\)/);
 assert.match(main, /AI 本次未返回可定位的问题/);
 assert.match(main, /执行过程与来源/);
