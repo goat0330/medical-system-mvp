@@ -9,6 +9,8 @@ import { buildSettlementList } from '../app/domain/settlement.js';
 import { renderSettlementPaper } from '../app/domain/settlement-template.js';
 import { buildWorkspaceSourceFingerprint, reconcileStoredWorkspace, workspaceStorageKey } from '../app/p1/workspace-integrity.js';
 import { runFormalGrouping, runPreGrouping } from '../app/p1/workflow-orchestrator.js';
+import { groupDip3 } from '../app/p1/dip3-grouper.js';
+import { runFullChainQualityControl } from '../app/clinical-facts/quality/full-chain-quality.js';
 import { isGoldenEpisode, normalizeSyntheticPatientEpisode } from '../app/p1/patient-integrity.js';
 import { filterGroupingQualityIssues, groupingImpactLabel, groupingQualityDomainLabel, groupingStageLabel, groupingStatusLabel } from '../app/p1/grouping-presentation.js';
 
@@ -26,10 +28,8 @@ assert.notEqual(golden.patient.patientId,demo.patient.patientId);
 assert.equal(isGoldenEpisode(golden),true);
 assert.equal(isGoldenEpisode(demo),false,'a generic datasetVersion must not label an ordinary synthetic Episode as Golden');
 assert.equal(demo.episodeId,'EP-DEMO-003');
-assert.equal(demo.diagnoses.principal,null);
-assert.deepEqual(demo.diagnoses.secondary,[]);
-assert.deepEqual(demo.procedures,[]);
-assert.deepEqual(demo.fees.items,[]);
+assert.ok(demo.diagnoses.principal?.code,'ordinary synthetic patients must have their own principal diagnosis');
+assert.ok(demo.syntheticData,'ordinary synthetic patients must use a source bundle separate from Golden data');
 assert.equal(demo.goldenData,undefined);
 const syntheticWithInconsistentDemographics=clone(demo);
 syntheticWithInconsistentDemographics.patient.birthDate='1955-02-18';
@@ -46,6 +46,8 @@ assert.equal(goldenCase.episode.diagnoses.principal.code,'K80.000x002');
 assert.equal(goldenCase.episode.procedures[0].code,'51.2300');
 assert.ok(goldenFacts.evidence.some((item)=>item.sourceType==='LIS'&&item.episodeId==='EP-GOLDEN-001'));
 assert.ok(goldenFacts.evidence.some((item)=>item.sourceType==='RIS/PACS'&&item.episodeId==='EP-GOLDEN-001'));
+assert.ok(demoFacts.evidence.some((item)=>item.sourceType==='LIS'&&item.episodeId==='EP-DEMO-003'));
+assert.ok(demoFacts.evidence.some((item)=>item.sourceType==='RIS/PACS'&&item.episodeId==='EP-DEMO-003'));
 assert.ok(demoFacts.evidence.every((item)=>item.episodeId==='EP-DEMO-003'));
 assert.ok(demoFacts.facts.every((item)=>item.episodeId==='EP-DEMO-003'));
 assert.ok(!demoFacts.evidence.some((item)=>item.evidenceId.includes('EP-GOLDEN-001')||item.value==='K80.000x002'||item.value==='51.2300'));
@@ -53,17 +55,36 @@ assert.ok(!demoFacts.facts.some((item)=>item.value==='K80.000x002'||item.value==
 
 const wrongPatientStorage=store();
 wrongPatientStorage.setItem('medical-system:document:EP-DEMO-003:frontpage',JSON.stringify({episodeId:'EP-GOLDEN-001',patientId:golden.patient.patientId,snapshot:{data:[{keyName:'主要诊断代码',keyValue:'K80.000x002'}]}}));
-assert.deepEqual(readPatientDocumentSnapshots(demo,wrongPatientStorage),[],'a document snapshot whose episode/patient identity differs must be ignored');
+const isolatedDocs=readPatientDocumentSnapshots(demo,wrongPatientStorage);
+assert.ok(isolatedDocs.length>0,'the selected patient keeps its own seeded documents when another patient document is rejected');
+assert.ok(isolatedDocs.every((doc)=>doc.episodeId===demo.episodeId&&doc.patientId===demo.patient.patientId&&doc.fixtureKind==='synthetic'));
+assert.ok(!isolatedDocs.some((doc)=>doc.snapshot?.data?.some((field)=>field.keyValue==='K80.000x002')),'another patient document must not enter this patient evidence set');
 
-const emptyWorkspace=workspaceFromEpisode(demoCase.episode,{policyProfileId:'WH-DRG-3.0'});
-assert.equal(emptyWorkspace.principalDiagnosis.code,undefined);
-assert.equal(emptyWorkspace.principalProcedure.code,undefined);
-const emptyPre=runPreGrouping({episode:episodeFromWorkspace(demoCase.episode,emptyWorkspace),workspace:emptyWorkspace});
-assert.equal(emptyPre.groupingResult.status,'INVALID_INPUT');
-assert.ok(emptyPre.groupingResult.errors.some((issue)=>issue.code==='PRINCIPAL_DIAGNOSIS_REQUIRED'));
-const emptyFormal=runFormalGrouping({episode:episodeFromWorkspace(demoCase.episode,emptyWorkspace),workspace:emptyWorkspace});
-assert.equal(emptyFormal.formalStatus,'BLOCKED_BY_INPUT_INTEGRITY');
-assert.equal(emptyFormal.groupingResult.group,null);
+const demoCases=worklist.filter((item)=>!item.golden);
+assert.equal(new Set(demoCases.map((item)=>item.episode.diagnoses.principal.code)).size,demoCases.length,'each selectable synthetic patient must have different case-specific diagnosis data');
+for(const item of demoCases){
+  const caseData=preparePatientCase(item.episode,store());
+  const workspace=workspaceFromEpisode(caseData.episode,{policyProfileId:'WH-DRG-3.0'});
+  const pre=runPreGrouping({episode:episodeFromWorkspace(caseData.episode,workspace),workspace});
+  const dip=groupDip3(pre.groupingSnapshot);
+  assert.ok(caseData.docs.length>=7,`${item.episodeId} has its own admission, progress, attending, discharge, and front-page records`);
+  assert.ok(caseData.docs.every((doc)=>doc.fixtureKind==='synthetic'&&doc.episodeId===item.episodeId&&doc.patientId===item.episode.patient.patientId));
+  assert.ok(caseData.episode.documentEvidence?.length>=7);
+  assert.ok(caseData.episode.fees.items.length>0,`${item.episodeId} has its own HIS fee details`);
+  assert.ok(caseData.episode.clinicalFactContext.evidence.some((entry)=>entry.sourceType==='LIS'));
+  assert.ok(caseData.episode.clinicalFactContext.evidence.some((entry)=>entry.sourceType==='RIS/PACS'));
+  assert.equal(caseData.episode.clinicalFactContext.blockingConflicts.length,0,`${item.episodeId} has internally consistent source facts`);
+  assert.equal(caseData.episode.clinicalFactContext.projections.grouping.principalDiagnosis.code,item.episode.diagnoses.principal.code);
+  assert.equal(pre.groupingResult.status,'GROUPED',`${item.episodeId} runs through the official DRG 3.0 grouper`);
+  assert.ok(pre.groupingResult.group?.code,`${item.episodeId} returns an actual DRG group`);
+  assert.equal(dip.status,'GROUPED',`${item.episodeId} runs through the official DIP 3.0 grouper`);
+  const formal=runFormalGrouping({episode:episodeFromWorkspace(caseData.episode,workspace),workspace});
+  assert.equal(formal.formalStatus,'FORMAL_GROUPED',`${item.episodeId} passes synthetic claim completeness and can be formally grouped locally`);
+  const qc=runFullChainQualityControl({episode:caseData.episode,documentSnapshots:caseData.docs,factContext:caseData.episode.clinicalFactContext,settlement:formal.settlement,groupingRun:pre});
+  assert.equal(qc.domains.find((domain)=>domain.id==='DOCUMENT').status,'PASS',`${item.episodeId} seeded documents pass document completeness checks`);
+  assert.equal(qc.domains.find((domain)=>domain.id==='FRONT_PAGE').status,'PASS',`${item.episodeId} seeded front page maps to confirmed patient facts`);
+  assert.equal(qc.domains.find((domain)=>domain.id==='SETTLEMENT').status,'PASS',`${item.episodeId} settlement projection passes required-field and total checks`);
+}
 
 const conflictEpisode=clone(demo);
 conflictEpisode.patient.age=43;

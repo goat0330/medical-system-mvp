@@ -19,9 +19,12 @@ export function readPatientDocumentSnapshots(episode, storage = globalThis.local
   if(!episode?.episodeId)return [];
   const saved=readSavedDocumentSnapshots(episode.episodeId,storage,episode.patient?.patientId).map((doc)=>({...doc,fixtureSource:false}));
   const savedIds=new Set(saved.map((doc)=>doc.templateId));
-  const fixtures=(episode.goldenData?.documents||[]).filter((doc)=>!savedIds.has(doc.templateId)).map((doc)=>({
+  const fixtureKind=episode.syntheticData?'synthetic':'golden';
+  const sourceDocuments=episode.syntheticData?.documents||episode.goldenData?.documents||[];
+  const fixtures=sourceDocuments.filter((doc)=>!savedIds.has(doc.templateId)).map((doc)=>({
     templateId:doc.templateId,templateName:doc.name,episodeId:episode.episodeId,patientId:episode.patient?.patientId||null,
-    status:doc.status,version:episode.datasetVersion||'golden',fixtureSource:true,snapshot:{text:doc.text,data:[]},
+    status:doc.status,version:episode.datasetVersion||`${fixtureKind}-fixture`,fixtureSource:true,fixtureKind,
+    snapshot:{text:doc.text||'',data:clone(doc.data||doc.snapshot?.data||[])},
   }));
   return [...fixtures,...saved];
 }

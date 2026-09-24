@@ -94,13 +94,15 @@ function inputSourceLabel(w,path){
 }
 function sourcePanel(base,w){
   const dx=factCell(base,'diagnosis.principal.code'),op=factCell(base,'procedure.primary.code');
-  const docs=base.docs.length,savedDocs=base.docs.filter((doc)=>!doc.fixtureSource).length,fixtureDocs=base.docs.filter((doc)=>doc.fixtureSource).length;
+  const docs=base.docs.length,savedDocs=base.docs.filter((doc)=>!doc.fixtureSource).length;
   const patients=window.medicalSystemMvp?.getPatientOptions?.()||[];
   const options=patients.map((x)=>({value:x.key,label:`${x.bed} · ${x.name} · ${x.episodeId}`}));
   const selectedKey=window.medicalSystemMvp?.getSelectedPatientKey?.()||'';
-  const sourceCountLabel=fixtureDocs?`${fixtureDocs} 份 Golden 样本文书`:`${savedDocs} 份已保存病历`;
+  const goldenFixtureDocs=base.docs.filter((doc)=>doc.fixtureKind==='golden').length;
+  const syntheticFixtureDocs=base.docs.filter((doc)=>doc.fixtureKind==='synthetic').length;
+  const sourceCountLabel=goldenFixtureDocs?`${goldenFixtureDocs} 份 Golden 样本文书`:syntheticFixtureDocs?`${syntheticFixtureDocs} 份独立合成病例文书`:`${savedDocs} 份已保存病历`;
   const emptyClinical=!base.docs.length&&!base.episode.diagnoses?.principal?.code&&!base.episode.procedures?.length&&!base.episode.fees?.items?.length;
-  const kind=isGoldenEpisode(base.episode)?'Golden 全流程样本':base.episode.synthetic?'合成工作列患者':'当前 Episode';
+  const kind=isGoldenEpisode(base.episode)?'Golden 全流程样本':base.episode.synthetic?'独立合成测试病例':'当前 Episode';
   return `<div class="base-card op-source"><div class="op-source-identity"><div><b>当前患者</b><span>${esc(base.episode.patient.name)} · ${esc(base.episode.episodeId)} · ${esc(base.episode.patient.sex||'性别未采集')}${base.episode.patient.age!=null?` · ${esc(base.episode.patient.age)}岁`:''}</span></div><label class="op-patient-selector">切换患者${select(selectedKey,'activePatientKey',options,'data-op-patient-select aria-label="选择当前患者"')}</label></div><div class="op-source-tags">${statusBadge(kind,isGoldenEpisode(base.episode)?'blue':'gray',true)}${statusBadge(sourceCountLabel,docs?'green':'gray',true)}${statusBadge(`${savedDocs} 份本地已保存`,savedDocs?'blue':'gray',true)}${statusBadge('国家 DRG/DIP 3.0规则','blue',true)}</div>${emptyClinical?'<div class="op-empty-clinical" role="status">暂无患者临床数据。此患者没有独立病历、诊断、手术或 HIS 费用，系统不会借用其他患者内容；请先录入本患者资料。</div>':''}<div class="op-source-map"><span>主要诊断：${esc(dx.value)}<small>${esc(dx.source)} · ${esc(groupingStatusLabel(dx.status))}</small></span><span>主要手术/操作：${esc(op.value)}<small>${esc(op.source)} · ${esc(groupingStatusLabel(op.status))}</small></span></div><div>${btn('从当前患者重新映射','reload-current','secondary')}</div></div>`;
 }
 function diagnosisRows(w){return (w.secondaryDiagnoses||[]).map((d,i)=>`<div class="op-repeat-row" data-secondary-row><span class="op-index">${i+1}</span>${input(d.code,'',`data-field="code" placeholder="诊断编码"`)}${diagnosisNameField(d.name,'secondary')}${removeButton('secondary')}</div>`).join('');}

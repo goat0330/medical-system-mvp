@@ -100,6 +100,10 @@ clickData('[data-patient-key]', 'patientKey', 'p-03');
 assert.match(app.innerHTML, /李某某/);
 assert.match(app.innerHTML, /EP-DEMO-003/);
 assert.match(app.innerHTML, /record-editor-loading/);
+clickData('[data-view]', 'view', 'grouping');
+assert.match(app.innerHTML, /N20\.100/);
+assert.match(app.innerHTML, /98\.5103/);
+assert.doesNotMatch(app.innerHTML, /暂无患者临床数据/);
 
 clickData('[data-view]', 'view', 'settlement');
 assert.match(app.innerHTML, /JSQD-DEMO-003/);

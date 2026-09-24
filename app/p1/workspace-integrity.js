@@ -31,6 +31,7 @@ export function buildWorkspaceSourceFingerprint({ episode, documentSnapshots = [
     })),
     clinicalSources: episode?.goldenData?.clinical || null,
     billingSources: episode?.goldenData?.billing || null,
+    syntheticSources: episode?.syntheticData || null,
     factRevision: clinicalFactContext?.revision || null,
     factDecisions: (clinicalFactContext?.decisions || []).map((decision) => ({
       episodeId: decision.episodeId, concept: decision.concept, selectedEvidenceId: decision.selectedEvidenceId,

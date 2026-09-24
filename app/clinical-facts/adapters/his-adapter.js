@@ -14,14 +14,15 @@ export function evidenceFromHis(episode) {
       factPath: `fees.items[${i}]`, structuredValue: x,
     }));
   }
-  for (const [i, x] of (episode?.goldenData?.clinical?.orders || []).entries()) {
+  const sourceRoot = episode?.syntheticData ? 'syntheticData' : 'goldenData';
+  for (const [i, x] of (episode?.[sourceRoot]?.clinical?.orders || []).entries()) {
     out.push(createEvidenceItem({
       evidenceId: `EV-HIS-ORDER-${episode.episodeId}-${x.orderId || i + 1}`,
       episodeId: episode.episodeId, patientId: episode.patient?.patientId || null,
       sourceType: 'HIS', sourceClass: 'HIS', sourceId: x.orderId || `order-${i+1}`,
       sourceVersion: episode.datasetVersion || 'golden', value: x, eventTime: x.startAt || null,
       excerpt: `${x.type || '医嘱'}：${x.name || ''} ${x.startAt || ''} ${x.status || ''}`.trim(),
-      factPath: `goldenData.clinical.orders[${i}]`, structuredValue: x,
+      factPath: `${sourceRoot}.clinical.orders[${i}]`, structuredValue: x,
     }));
   }
   return out;
