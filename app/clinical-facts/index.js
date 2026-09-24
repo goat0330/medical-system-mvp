@@ -5,6 +5,7 @@ import { evidenceFromLis } from './adapters/lis-adapter.js';
 import { evidenceFromRis } from './adapters/ris-adapter.js';
 import { resolveClinicalFacts } from './reconciliation/fact-resolver.js';
 import { detectFactConflicts, unresolvedBlockingConflicts } from './reconciliation/conflict-engine.js';
+import { buildClinicalFactCollections } from './reconciliation/collection-resolver.js';
 import { buildSettlementProjection } from './projection/settlement-projection.js';
 import { buildGroupingFactProjection } from './projection/grouping-projection.js';
 import { buildAuditProjection } from './projection/audit-projection.js';
@@ -24,7 +25,7 @@ export function persistClinicalFactContext(context, storage = safeStorage()) {
   if (!storage || !context?.episodeId) return context;
   const snapshot = {
     episodeId: context.episodeId, patientId: context.patientId, revision: context.revision,
-    evidence: context.evidence, facts: context.facts, conflicts: context.conflicts, decisions: context.decisions,
+    evidence: context.evidence, facts: context.facts, conflicts: context.conflicts, collections: context.collections, collectionConflicts: context.collectionConflicts, decisions: context.decisions,
     builtAt: new Date().toISOString(),
   };
   storage.setItem(contextKey(context.episodeId), JSON.stringify(snapshot));
@@ -62,6 +63,7 @@ export function buildClinicalFactContext({ episode, documentSnapshots = [], deci
   ].filter((item) => item.episodeId === episode.episodeId && (!item.patientId || !episode.patient?.patientId || item.patientId === episode.patient.patientId));
   const facts = resolveClinicalFacts({ episodeId: episode.episodeId, evidence, decisions: chosenDecisions });
   const conflicts = detectFactConflicts({ episodeId: episode.episodeId, evidence, facts });
+  const { collections, conflicts: collectionConflicts } = buildClinicalFactCollections({ episodeId: episode.episodeId, evidence });
   const revisionSeed = JSON.stringify({
     episodeId: episode.episodeId,
     evidence: evidence.map((x) => [x.evidenceId, x.value, x.sourceVersion]),
@@ -75,6 +77,8 @@ export function buildClinicalFactContext({ episode, documentSnapshots = [], deci
     evidence,
     facts,
     conflicts,
+    collections,
+    collectionConflicts,
     decisions: chosenDecisions,
     revision: `FACT-${(hash >>> 0).toString(16).padStart(8,'0')}`,
   };

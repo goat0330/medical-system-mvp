@@ -90,11 +90,18 @@ export function applyDocumentFacts(episode, facts={}){
   if(opCode||opName){if(!e.procedures?.length)e.procedures=[{}];e.procedures[0]={...e.procedures[0],...(opCode?{code:opCode}:{}),...(opName?{name:opName}:{}),role:'primary'};}
   const sex=confirmedValue(context,'patient.sex'),age=confirmedValue(context,'patient.age');if(sex)e.patient.sex=sex;if(age!==undefined&&age!==null&&Number.isFinite(Number(age)))e.patient.age=Number(age);
   const admissionAt=confirmedValue(context,'admission.at'),dischargeAt=confirmedValue(context,'discharge.at');if(admissionAt&&!Number.isNaN(new Date(admissionAt).getTime()))e.admission.at=admissionAt;if(dischargeAt&&!Number.isNaN(new Date(dischargeAt).getTime()))e.discharge.at=dischargeAt;
+  const grouping=context.projections?.grouping||{};
+  e.diagnoses={...e.diagnoses,secondary:(grouping.secondaryDiagnoses||[]).map((item)=>({...item,...(e.diagnoses?.secondary||[]).find((source)=>source.code&&source.code===item.code)}))};
+  const mappedOthers=grouping.otherProcedures||[];
+  if(mappedOthers.length||e.procedures?.length>1){
+    const originalOthers=e.procedures?.slice(1)||[];
+    e.procedures=[...(e.procedures?.slice(0,1)||[]),...mappedOthers.map((item)=>({...originalOthers.find((source)=>source.code&&source.code===item.code),...item,role:'other'}))];
+  }
   e.documentEvidence=(facts.sourceDocuments||[]).map((x)=>x);e.documentSnapshots=records;e.clinicalFactContext=context;
   return e;
 }
 
-export function defaultClaimDetailsFromEpisode(episode){const admissionDate=String(episode?.admission?.at||'').slice(0,10);return(episode?.fees?.items||[]).map((x,i)=>({id:`CLAIM-${i+1}`,category:x.category||'other',itemCode:x.itemCode||'',itemName:x.name||`费用项目${i+1}`,billingTime:x.billingTime||`${admissionDate}T12:00:00+08:00`,quantity:Number(x.quantity??x.qty??1),unitPrice:Number(x.unitPrice??x.amount??0),amount:Number(x.amount??0),classA:Number(x.classA??0),classB:Number(x.classB??0),selfPay:Number(x.selfPay??0),other:Number(x.other??0),aggregateSource:!(x.itemCode||x.serviceCode)}));}
+export function defaultClaimDetailsFromEpisode(episode){return(episode?.fees?.items||[]).map((x,i)=>({id:`CLAIM-${i+1}`,category:x.category||'other',itemCode:x.itemCode||'',itemName:x.name||`费用项目${i+1}`,billingTime:x.billingTime||'',quantity:Number(x.quantity??x.qty??1),unitPrice:Number(x.unitPrice??x.amount??0),amount:Number(x.amount??0),classA:Number(x.classA??0),classB:Number(x.classB??0),selfPay:Number(x.selfPay??0),other:Number(x.other??0),aggregateSource:!(x.itemCode||x.serviceCode)}));}
 
 export function workspaceFromEpisode(episode,{policyProfileId='WH-DRG-3.0',claimDetails=null}={}){
   const procedures=episode?.procedures||[];
@@ -108,16 +115,74 @@ export function workspaceFromEpisode(episode,{policyProfileId='WH-DRG-3.0',claim
     'procedure.primary.name':inputSourceFor({...episode,clinicalFactContext:context},'procedure.primary.name'),
   };
   return {
-    episodeId:episode.episodeId,policyProfileId,
+    episodeId:episode.episodeId,policyProfileId,collectionVersion:1,
     patient:{sex:context.projections?.grouping?.patient?.sex||'',age:context.projections?.grouping?.patient?.age==null?'':Number(context.projections.grouping.patient.age),birthDate:context.projections?.grouping?.patient?.birthDate||'',newbornWeight:episode.patient?.newbornWeight??null,ageInDays:episode.patient?.ageInDays??null},
     principalDiagnosis:{...(context.projections?.grouping?.principalDiagnosis||{})},
-    secondaryDiagnoses:(episode.diagnoses?.secondary||[]).map((x)=>({...x})),
+    secondaryDiagnoses:(context.projections?.grouping?.secondaryDiagnoses||episode.diagnoses?.secondary||[]).map((x)=>({...x})),
     principalProcedure:{...(context.projections?.grouping?.principalProcedure||{})},
-    otherProcedures:procedures.slice(1).map((x)=>({...x})),groupingInputSources:inputSources,
+    otherProcedures:(context.projections?.grouping?.otherProcedures||procedures.slice(1)).map((x)=>({...x})),groupingInputSources:inputSources,
     clinicalFactors:{lengthOfStay:null,icuHours:Number(episode.clinicalProcess?.icuHours||0),ventilatorHours:Number(episode.clinicalProcess?.ventilatorHours||0)},
     claimDetails:claimDetails||defaultClaimDetailsFromEpisode(episode),localPaymentParameters:{weight:'',rate:'',score:'',pointValue:'',adjustment:1},
     confirmedMappings:[],preGroupingRun:null,formalGroupingRun:null,auditRun:null,reviewLog:[],revision:1,updatedAt:new Date().toISOString(),
   };
+}
+
+function groupingInputSignature(workspace){
+  return JSON.stringify({
+    policyProfileId:workspace?.policyProfileId,patient:workspace?.patient,
+    principalDiagnosis:workspace?.principalDiagnosis,secondaryDiagnoses:workspace?.secondaryDiagnoses,
+    principalProcedure:workspace?.principalProcedure,otherProcedures:workspace?.otherProcedures,
+    clinicalFactors:workspace?.clinicalFactors,
+  });
+}
+
+function workspaceMatchesRun(workspace,run){
+  const snapshot=run?.groupingSnapshot;if(!snapshot)return true;
+  const sex=workspace?.patient?.sex==='男'?1:workspace?.patient?.sex==='女'?2:null;
+  const nullableNumber=(value)=>value===''||value===null||value===undefined?null:Number(value);
+  return run.route?.id===workspace?.policyProfileId
+    &&snapshot.patient?.sex===sex
+    &&Number(snapshot.patient?.age)===Number(workspace?.patient?.age)
+    &&nullableNumber(snapshot.patient?.ageInDays)===nullableNumber(workspace?.patient?.ageInDays)
+    &&nullableNumber(snapshot.patient?.newbornWeight)===nullableNumber(workspace?.patient?.newbornWeight)
+    &&(snapshot.principalDiagnosis?.code||'')===(workspace?.principalDiagnosis?.code||'')
+    &&(snapshot.principalDiagnosis?.name||'')===(workspace?.principalDiagnosis?.name||'')
+    &&JSON.stringify((snapshot.secondaryDiagnoses||[]).map((x)=>[x.code||'',x.name||'']))===JSON.stringify((workspace?.secondaryDiagnoses||[]).map((x)=>[x.code||'',x.name||'']))
+    &&(snapshot.principalProcedure?.code||'')===(workspace?.principalProcedure?.code||'')
+    &&JSON.stringify((snapshot.otherProcedures||[]).map((x)=>[x.code||'',x.name||'']))===JSON.stringify((workspace?.otherProcedures||[]).map((x)=>[x.code||'',x.name||'']));
+}
+
+export function remapWorkspaceFromEpisode(episode,previousWorkspace,{sourceChanged=false}={}){
+  const previous=previousWorkspace?.episodeId===episode?.episodeId?previousWorkspace:{};
+  const next=workspaceFromEpisode(episode,{policyProfileId:previous.policyProfileId||'WH-DRG-3.0',claimDetails:clone(previous.claimDetails||defaultClaimDetailsFromEpisode(episode))});
+  const before=groupingInputSignature(previous);
+  const fieldOverrides=[
+    ['patient.sex','patient','sex'],['patient.age','patient','age'],['patient.ageInDays','patient','ageInDays'],['patient.newbornWeight','patient','newbornWeight'],
+    ['diagnosis.principal.code','principalDiagnosis','code'],['diagnosis.principal.name','principalDiagnosis','name'],
+    ['procedure.primary.code','principalProcedure','code'],['procedure.primary.name','principalProcedure','name'],
+  ];
+  for(const [path,section,key] of fieldOverrides){
+    if(previous.groupingInputSources?.[path]?.status!=='MANUAL_OVERRIDE')continue;
+    next[section]={...next[section],[key]:previous[section]?.[key]};
+    next.groupingInputSources[path]=previous.groupingInputSources[path];
+  }
+  for(const collection of ['diagnosis.secondary','procedure.others']){
+    if(previous.groupingInputSources?.[collection]?.status!=='MANUAL_OVERRIDE')continue;
+    const key=collection==='diagnosis.secondary'?'secondaryDiagnoses':'otherProcedures';
+    next[key]=clone(previous[key]||[]);
+    next.groupingInputSources[collection]=previous.groupingInputSources[collection];
+  }
+  next.confirmedMappings=clone(previous.confirmedMappings||[]);
+  next.reviewLog=clone(previous.reviewLog||[]);
+  next.revision=Number(previous.revision||1);
+  next.preGroupingRun=previous.preGroupingRun||null;
+  next.formalGroupingRun=previous.formalGroupingRun||null;
+  next.auditRun=sourceChanged?null:(previous.auditRun||null);
+  const changed=before!==groupingInputSignature(next)||[previous.formalGroupingRun,previous.preGroupingRun].filter(Boolean).some((run)=>!workspaceMatchesRun(next,run));
+  if(changed)next.revision+=1;
+  next.remapNotice=changed?'患者资料已更新，请重新分组。':'已重新读取当前患者资料；分组输入未变化。';
+  next.updatedAt=new Date().toISOString();
+  return {workspace:next,changed};
 }
 
 export function episodeFromWorkspace(baseEpisode, workspace){
@@ -132,5 +197,14 @@ export function episodeFromWorkspace(baseEpisode, workspace){
   if(conflicted('procedure.primary.name'))principalProcedure.name=baseProc.name||'';
   const p0=principalProcedure.code||principalProcedure.name?{...baseProc,...principalProcedure,role:'primary'}:null;const others=(workspace.otherProcedures||[]).filter((x)=>x.code||x.name).map((x,i)=>({id:x.id||`OP-${i+2}`,...x,role:'other'}));e.procedures=[...(p0?[p0]:[]),...others];
   e.clinicalProcess={...e.clinicalProcess,icuHours:Number(workspace.clinicalFactors?.icuHours||0),ventilatorHours:Number(workspace.clinicalFactors?.ventilatorHours||0)};e.fees={...e.fees,items:(workspace.claimDetails||[]).map((x)=>({category:x.category||'other',name:x.itemName,itemCode:x.itemCode,billingTime:x.billingTime,quantity:Number(x.quantity||0),unitPrice:Number(x.unitPrice||0),amount:Number(x.amount||0),classA:Number(x.classA||0),classB:Number(x.classB||0),selfPay:Number(x.selfPay||0),other:Number(x.other||0),aggregateSource:Boolean(x.aggregateSource)}))};
-  const records=e.documentSnapshots||baseEpisode.documentSnapshots||[];e.documentSnapshots=records;e.groupingInputSources=workspace.groupingInputSources||{};e.clinicalFactContext=buildClinicalFactContext({episode:e,documentSnapshots:records});return e;
+  const records=e.documentSnapshots||baseEpisode.documentSnapshots||[];e.documentSnapshots=records;e.groupingInputSources=workspace.groupingInputSources||{};e.clinicalFactContext=buildClinicalFactContext({episode:e,documentSnapshots:records});
+  const attachManualEvidence=(items,collection)=>items.map((item,index)=>{
+    if(item.status!=='MANUAL_OVERRIDE')return item;
+    const path=`${collection}[${index}]`;const refs=e.clinicalFactContext.evidence.filter((entry)=>entry.sourceType==='EPISODE'&&entry.factPath?.startsWith(path)).map((entry)=>entry.evidenceId);
+    const fact=e.clinicalFactContext.collections?.[collection]?.find((entry)=>entry.code===item.code);
+    return {...item,factRefs:{factId:fact?.factId||item.factRefs?.factId||null,evidenceRefs:refs},evidenceRefs:refs,sourceStatus:{code:{sourceType:'MANUAL',status:'MANUAL_OVERRIDE',factId:fact?.factId||null,evidenceRefs:refs},name:{sourceType:'MANUAL',status:'MANUAL_OVERRIDE',factId:fact?.factId||null,evidenceRefs:refs}}};
+  });
+  e.diagnoses.secondary=attachManualEvidence(e.diagnoses.secondary||[],'diagnosis.secondary');
+  e.procedures=e.procedures.map((item,index)=>index===0?item:attachManualEvidence([item],'procedure.others')[0]);
+  return e;
 }

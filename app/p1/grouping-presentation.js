@@ -5,10 +5,10 @@ const STAGES = Object.freeze({
   PATIENT_FACT_RECONCILIATION: '患者事实核对',
   FORMAL_SUBMISSION_VALIDATION: '正式提交校验',
   CC_MCC_PRECOMPUTE: '并发症 / 合并症判断',
-  PRE_MDC: '特殊预分组匹配',
-  MDC: '主诊断大类分组',
-  ADRG: '诊断相关组分组',
-  DRG: '最终 DRG 分组',
+  PRE_MDC: '先期分组（Pre-MDC）',
+  MDC: 'MDC',
+  ADRG: 'ADRG',
+  DRG: 'DRG',
   DIP_PRE_VALIDATION: '分组前校验',
   DIP_EXCLUSION_DIAGNOSIS: '主要诊断排除校验',
   DIP_EXCLUSION_PROCEDURE: '主要操作排除校验',
@@ -32,6 +32,10 @@ const STATES = Object.freeze({
   GROUPED: '分组完成', GROUPED_PENDING_CODING_CONFIRMATION: '预分组完成，待编码确认',
   PENDING_CODING_CONFIRMATION: '待编码确认', FORMAL_GROUPED: '正式分组完成', NOT_GROUPED: '未完成分组',
   PENDING_LOCAL_PARAMETERS: '待本地支付参数', CALCULATED_WITH_LOCAL_TEST_PARAMETERS: '本地测试参数测算',
+  REFERENCE_ONLY: '参考参数测算', CALCULATED_WITH_VERIFIED_PARAMETERS: '已用核验参数测算',
+  WITHIN_REFERENCE_PAYMENT: '低于病组参考支付标准', OVER_REFERENCE_PAYMENT: '高于病组参考支付标准',
+  PAYMENT_PROFILE_VERSION_MISMATCH: '支付与分组版本不匹配', GROUPER_NOT_AVAILABLE: '分组规则未接入',
+  GROUPER_PROFILE_VERSION_MISMATCH: '分组执行器版本不匹配',
   NOT_CALCULATED: '未测算', NOT_RUN: '未执行', READY: '就绪', REVIEW: '待复核', STALE: '已过期',
   CONFLICTED: '存在冲突', CANDIDATE: '待确认', MISSING: '未采集', MANUAL_OVERRIDE: '人工修改',
   RETURN_TO_HOSPITAL: '已退回医院', RULE_NOT_APPLICABLE: '规则不适用', ESCALATE: '已转稽核',
@@ -53,7 +57,8 @@ export function groupingImpactLabel(scope) { return IMPACT_SCOPES[scope] || scop
 
 export function groupingStatusTone(status) {
   if (/FAIL|BLOCK|INVALID|ERROR|NOT_GROUPED|EXCLUDED/.test(String(status || ''))) return 'red';
-  if (/PENDING|REQUIRES_CONFIRMATION|REVIEW|STALE|NOT_RUN|CONFLICTED|CANDIDATE/.test(String(status || ''))) return 'amber';
+  if (/PENDING|REQUIRES_CONFIRMATION|REVIEW|STALE|NOT_RUN|CONFLICTED|CANDIDATE|OVER_REFERENCE|MISMATCH|NOT_AVAILABLE|REFERENCE_ONLY/.test(String(status || ''))) return 'amber';
+  if (/WITHIN_REFERENCE|CALCULATED_WITH_VERIFIED/.test(String(status||''))) return 'green';
   if (/PASS|DONE|BUILT|MATCHED|GROUPED|CONFIRMED|READY|UNCHANGED/.test(String(status || ''))) return 'green';
   return 'blue';
 }

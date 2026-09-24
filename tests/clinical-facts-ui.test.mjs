@@ -9,8 +9,10 @@ const groupingFactsRender=factsUi.slice(factsUi.indexOf('function renderGrouping
 assert.match(factsUi,/function renderGroupingFacts\(context\)/);
 assert.match(factsUi,/context\.evidence\.filter\(\(item\)=>evidenceIds\.has\(item\.evidenceId\)\)/);
 assert.match(factsUi,/item\.impactScope\?\.includes\('GROUPING'\)/);
-assert.match(factsUi,/查看分组字段来源/);
-assert.doesNotMatch(groupingFactsRender,/ClinicalFact|context\.evidence\.length|fact-revision/);
+assert.match(groupingFactsRender,/查看字段证据（\$\{evidence\.length\}）/);
+assert.match(groupingFactsRender,/<details class="fact-platform-card op-data-details"/);
+assert.doesNotMatch(groupingFactsRender,/<details[^>]*\sopen(?:\s|>)/);
+assert.doesNotMatch(groupingFactsRender.match(/<summary>(.*?)<\/summary>/s)?.[1]||'',/ClinicalFact|context\.evidence|fact-revision/);
 assert.match(qualityUi,/filterGroupingQualityIssues\(run\.issues\)/);
 assert.match(groupingPresentation,/issue\.qcDomain === 'GROUPING' \|\| issue\.impactScope\?\.includes\('GROUPING'\)/);
 assert.match(qualityUi,/查看全流程质控（6 个环节/);

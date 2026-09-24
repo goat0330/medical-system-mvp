@@ -2,10 +2,17 @@ import { createClinicalFact, FACT_STATUS } from '../models/fact.js';
 import { MAPPING_BY_CONCEPT, normalizeMappedValue } from '../mapping/mapping-registry.js';
 
 const stable = (value) => JSON.stringify(value);
+const isDateOnly = (value) => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value);
+function chinaCalendarDate(value) {
+  if (isDateOnly(value)) return value;
+  const instant = new Date(value);
+  return Number.isFinite(instant.getTime()) ? new Date(instant.getTime() + 8 * 60 * 60 * 1000).toISOString().slice(0, 10) : null;
+}
 const equalByPolicy = (concept, a, b) => {
   const policy = MAPPING_BY_CONCEPT[concept]?.conflictPolicy || 'exact';
   if (policy === 'numeric') return Number(a) === Number(b);
   if (policy === 'datetime') {
+    if (isDateOnly(a) || isDateOnly(b)) return chinaCalendarDate(a) === chinaCalendarDate(b);
     const da = new Date(a), db = new Date(b);
     return Number.isFinite(da.getTime()) && Number.isFinite(db.getTime()) ? Math.abs(da - db) < 60000 : String(a) === String(b);
   }
@@ -19,6 +26,11 @@ function decisionFor(concept, decisions = []) {
 function chooseByPriority(mapping, candidates) {
   const priority = mapping?.sourcePriority || [];
   return [...candidates].sort((a, b) => {
+    if (mapping?.conflictPolicy === 'datetime') {
+      const aPrecision = isDateOnly(a.normalizedValue) ? 0 : 1;
+      const bPrecision = isDateOnly(b.normalizedValue) ? 0 : 1;
+      if (aPrecision !== bPrecision) return bPrecision - aPrecision;
+    }
     const ai = priority.indexOf(a.sourceClass); const bi = priority.indexOf(b.sourceClass);
     const ap = ai < 0 ? 999 : ai; const bp = bi < 0 ? 999 : bi;
     if (ap !== bp) return ap - bp;

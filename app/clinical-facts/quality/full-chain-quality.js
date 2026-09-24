@@ -87,6 +87,20 @@ function groupingIssues({ episode, groupingRun }) {
   return issues;
 }
 
+function collectionConflictIssues({ episode, factContext, resolvedCollections = [] }) {
+  const resolved = new Set(resolvedCollections);
+  return (factContext?.collectionConflicts || []).filter((conflict) => !resolved.has(conflict.collection)).map((conflict) => {
+    const diagnosis = conflict.collection === 'diagnosis.secondary';
+    return qIssue({
+      issueId:`QI-COLLECTION-${conflict.conflictId}`, episodeId:episode.episodeId, qcDomain:'CROSS_DOCUMENT',
+      type:diagnosis?'SECONDARY_DIAGNOSIS_CODE_CONFLICT':'OTHER_PROCEDURE_CODE_CONFLICT', severity:'high',
+      title:diagnosis?'其他诊断编码存在冲突':'其他手术/操作编码存在冲突', message:conflict.reason,
+      conflictRefs:[conflict.conflictId], evidenceRefs:[...new Set((conflict.candidates || []).flatMap((candidate) => candidate.evidenceIds || []))],
+      impactScope:['FRONTPAGE','SETTLEMENT','GROUPING','AUDIT'], blocking:true, field:conflict.collection,
+    });
+  });
+}
+
 function auditIssues({ episode, auditRun }) {
   if (!auditRun || auditRun.blocked) return [];
   return (auditRun.risks || []).filter((risk)=>risk.type !== 'SETTLEMENT_DATA_QUALITY').map((risk,index)=>qIssue({
@@ -133,11 +147,12 @@ function hasCrossSourceFacts(context) {
   return [...sourcesByConcept.values()].some((sources) => sources.size > 1);
 }
 
-export function runFullChainQualityControl({ episode, documentSnapshots = [], factContext, settlement = null, groupingRun = null, auditRun = null } = {}) {
+export function runFullChainQualityControl({ episode, documentSnapshots = [], factContext, settlement = null, groupingRun = null, auditRun = null, resolvedCollections = [] } = {}) {
   if (!episode?.episodeId) throw new Error('episode is required');
   const issues = dedupe([
     ...documentIssues({episode,documentSnapshots}),
     ...qualityIssuesFromFactConflicts(factContext || {episodeId:episode.episodeId,conflicts:[],facts:[]}),
+    ...collectionConflictIssues({episode,factContext,resolvedCollections}),
     ...frontPageIssues({episode,documentSnapshots,factContext}),
     ...settlementIssues({episode,settlement}),
     ...groupingIssues({episode,groupingRun}),

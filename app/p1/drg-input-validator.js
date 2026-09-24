@@ -5,20 +5,24 @@ export const DRG_LOCAL_CODING_CROSSWALK = Object.freeze([
 ]);
 
 let DIAGNOSIS_INDEX = null;
+let DIAGNOSIS_CANONICAL_CODES = null;
 function normalizeCode(value) { return String(value || '').trim().toUpperCase(); }
 function diagnosisIndex() {
   if (DIAGNOSIS_INDEX) return DIAGNOSIS_INDEX;
   const byCode = new Map();
+  const canonicalCodes = new Map();
   for (const [setName, codes] of Object.entries(DRG3_OFFICIAL.sets || {})) {
     if (!/^DI_/i.test(setName)) continue;
     for (const raw of codes || []) {
       const code = normalizeCode(raw);
       if (!code) continue;
+      if (!canonicalCodes.has(code)) canonicalCodes.set(code, String(raw).trim());
       if (!byCode.has(code)) byCode.set(code, []);
       byCode.get(code).push(setName);
     }
   }
   DIAGNOSIS_INDEX = byCode;
+  DIAGNOSIS_CANONICAL_CODES = canonicalCodes;
   return DIAGNOSIS_INDEX;
 }
 
@@ -39,6 +43,17 @@ export function getDrg3DiagnosisSupport(code) {
 }
 
 export function isDrg3DiagnosisCodeSupported(code) { return getDrg3DiagnosisSupport(code).supported; }
+
+export function searchDrg3DiagnosisCodes(query = '', limit = 40) {
+  const term = normalizeCode(query);
+  if (!term) return [];
+  diagnosisIndex();
+  return [...DIAGNOSIS_INDEX.keys()]
+    .filter((code) => code.includes(term))
+    .sort((a, b) => Number(b === term) - Number(a === term) || Number(b.startsWith(term)) - Number(a.startsWith(term)) || a.localeCompare(b))
+    .slice(0, limit)
+    .map((code) => DIAGNOSIS_CANONICAL_CODES.get(code) || code);
+}
 
 function duplicateCodes(items = []) {
   const seen = new Set(); const duplicates = new Set();

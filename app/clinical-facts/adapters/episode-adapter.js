@@ -19,6 +19,21 @@ function ev(episode, suffix, concept, value, factPath, title) {
   });
 }
 
+function collectionEvidence(episode, collection, items, label) {
+  return (items || []).flatMap((item, index) => ['code', 'name'].filter((part) => item?.[part] != null && String(item[part]).trim()).map((part) => {
+    const value = part === 'code' ? normalizeMappedValue('diagnosis.principal.code', item[part]) : String(item[part]).trim();
+    return createEvidenceItem({
+      evidenceId: `EV-EP-${episode.episodeId}-${collection.replaceAll('.', '-')}-${index + 1}-${part}`,
+      episodeId: episode.episodeId, patientId: episode.patient?.patientId || null,
+      sourceType: 'EPISODE', sourceClass: 'EPISODE', sourceId: `${collection}[${index}]`,
+      sourceVersion: episode.datasetVersion || episode.revision || 'episode-current',
+      fieldName: `${label}${part === 'code' ? '代码' : '名称'}`, value, excerpt: `${label}：${value}`,
+      factPath: `${collection}[${index}].${part}`, structuredValue: item[part],
+      metadata: { collection, collectionRowId: String(index), collectionPart: part },
+    });
+  }));
+}
+
 export function evidenceFromEpisode(episode) {
   const p = episode?.patient || {};
   const a = episode?.admission || {};
@@ -51,5 +66,8 @@ export function evidenceFromEpisode(episode) {
     ev(episode,'ANESTHESIA','procedure.primary.anesthesiaType',op.anesthesiaType,'procedures[0].anesthesiaType','麻醉方式'),
     ev(episode,'OPERATOR','procedure.primary.operator.name',op.operator?.name,'procedures[0].operator.name','术者'),
     ev(episode,'ANESTHESIOLOGIST','procedure.primary.anesthesiologist.name',op.anesthesiologist?.name,'procedures[0].anesthesiologist.name','麻醉医师'),
-  ].filter(Boolean);
+  ].filter(Boolean).concat(
+    collectionEvidence(episode,'diagnosis.secondary',episode?.diagnoses?.secondary,'其他诊断'),
+    collectionEvidence(episode,'procedure.others',(episode?.procedures||[]).slice(1),'其他手术/操作'),
+  );
 }

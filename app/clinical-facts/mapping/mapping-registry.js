@@ -23,33 +23,33 @@ export const CLINICAL_MAPPING_REGISTRY = Object.freeze([
   entry('episode.inpatientNumber', { settlementPath: 'inpatientNumber', codes: ['DE01.00.014.00'], aliases: ['住院号'] }),
   entry('admission.at', { settlementPath: 'inpatient.admissionAt', codes: ['DE06.00.092.00'], aliases: ['入院时间', '入院日期时间'], critical: true, conflictPolicy: 'datetime', impactScope: ['SETTLEMENT','GROUPING','AUDIT'] }),
   entry('discharge.at', { settlementPath: 'inpatient.dischargeAt', codes: ['DE06.00.017.00'], aliases: ['出院时间', '出院日期时间'], critical: true, conflictPolicy: 'datetime', impactScope: ['SETTLEMENT','GROUPING','AUDIT'] }),
-  entry('admission.department', { settlementPath: 'inpatient.admissionDepartment', codes: ['DE08.10.026.00.001'], aliases: ['入院科别', '科室名称'] }),
-  entry('discharge.department', { settlementPath: 'inpatient.dischargeDepartment', codes: ['DE08.10.026.00.002'], aliases: ['出院科别'] }),
+  entry('admission.department', { settlementPath: 'inpatient.admissionDepartment', codes: ['DE08.10.026.00.001', 'DE08.10.026.00.022'], aliases: ['入院科别', '科室名称'] }),
+  entry('discharge.department', { settlementPath: 'inpatient.dischargeDepartment', codes: ['DE08.10.026.00.002', 'DE08.10.026.00.024'], aliases: ['出院科别'] }),
   entry('admission.source', { settlementPath: 'inpatient.admissionSource', codes: ['SETTLEMENT.inpatient.admissionSource'], aliases: ['入院途径'] }),
   entry('admission.medicalType', { settlementPath: 'inpatient.medicalType', codes: ['SETTLEMENT.inpatient.medicalType'], aliases: ['住院医疗类型'] }),
   entry('admission.treatmentCategory', { settlementPath: 'inpatient.treatmentCategory', codes: ['SETTLEMENT.inpatient.treatmentCategory'], aliases: ['治疗类别'] }),
   entry('discharge.method', { settlementPath: 'discharge.method', codes: ['SETTLEMENT.discharge.method'], aliases: ['离院方式', '出院方式'] }),
   entry('diagnosis.principal.name', {
-    settlementPath: 'inpatient.principalDiagnosis.name', codes: ['DE05.10.172.00'],
-    aliases: ['主要诊断', '出院主要诊断', '主要诊断名称'], critical: true,
+    settlementPath: 'inpatient.principalDiagnosis.name', codes: ['DE05.10.172.00', 'DE05.01.025.00.009'],
+    aliases: ['主要诊断', '出院主要诊断', '主要诊断名称', '出院西医诊断_名称'], critical: true,
     sourcePriority: ['FACT_DECISION','FRONTPAGE','DISCHARGE','EPISODE'],
     impactScope: ['FRONTPAGE','SETTLEMENT','GROUPING','AUDIT']
   }),
   entry('diagnosis.principal.code', {
-    settlementPath: 'inpatient.principalDiagnosis.code', codes: ['DE05.01.024.00'],
-    aliases: ['主要诊断代码', '主要诊断疾病编码', '疾病编码'], critical: true,
+    settlementPath: 'inpatient.principalDiagnosis.code', codes: ['DE05.01.024.00', 'DE05.01.024.00.044'],
+    aliases: ['主要诊断代码', '主要诊断疾病编码', '疾病编码', '出院西医诊断_编码'], critical: true,
     sourcePriority: ['FACT_DECISION','FRONTPAGE','DISCHARGE','EPISODE'],
     impactScope: ['FRONTPAGE','SETTLEMENT','GROUPING','AUDIT']
   }),
   entry('procedure.primary.name', {
-    settlementPath: 'procedures.primary.name', codes: ['DE06.00.094.00.005'], aliases: ['主要手术及操作名称', '手术名称'],
+    settlementPath: 'procedures.primary.name', codes: ['DE06.00.094.00.005', 'DE99.02.002.001'], aliases: ['主要手术及操作名称', '手术名称', '手术及操作名称'],
     critical: true, sourcePriority: ['FACT_DECISION','FRONTPAGE','SURGERY','DISCHARGE','EPISODE'], impactScope: ['FRONTPAGE','SETTLEMENT','GROUPING','AUDIT']
   }),
   entry('procedure.primary.code', {
-    settlementPath: 'procedures.primary.code', codes: ['DE06.00.093.00'], aliases: ['主要手术及操作代码', '手术及操作代码'],
+    settlementPath: 'procedures.primary.code', codes: ['DE06.00.093.00', 'DE99.02.001.001'], aliases: ['主要手术及操作代码', '手术及操作代码', '手术及操作编码'],
     critical: true, sourcePriority: ['FACT_DECISION','FRONTPAGE','SURGERY','DISCHARGE','EPISODE'], impactScope: ['FRONTPAGE','SETTLEMENT','GROUPING','AUDIT']
   }),
-  entry('procedure.primary.anesthesiaType', { settlementPath: 'procedures.primary.anesthesiaType', codes: ['DE06.00.073.00'], aliases: ['麻醉方式', '麻醉方式代码'] }),
+  entry('procedure.primary.anesthesiaType', { settlementPath: 'procedures.primary.anesthesiaType', codes: ['DE06.00.073.00', 'DE99.02.010.001'], aliases: ['麻醉方式', '麻醉方式代码'] }),
   entry('procedure.primary.operator.name', { settlementPath: 'procedures.primary.operator.name', codes: ['DE02.01.039.00.161'], aliases: ['手术者姓名', '术者姓名'] }),
   entry('procedure.primary.anesthesiologist.name', { settlementPath: 'procedures.primary.anesthesiologist.name', codes: ['DE02.01.039.00.155'], aliases: ['麻醉医师姓名'] }),
 ]);
@@ -84,6 +84,23 @@ export function registryEntryForField({ keyCode = '', keyName = '', templateId =
   return matches.find(sourceAllowed) || matches[0];
 }
 
+export function collectionFieldForField({ keyName = '' } = {}) {
+  const raw = String(keyName || '').trim();
+  const name = n(raw).replaceAll('/', '');
+  if (!name || /入院病情|出院病情|诊断类别/.test(name)) return null;
+
+  let collection = null;
+  if (/(其他|其它|次要)诊断/.test(name)) collection = 'diagnosis.secondary';
+  else if (/(其他|其它|次要).*(手术|操作)|^手术及操作[2-9]\d*(?:名称|代码)?$|^手术及操作(?:名称|代码)[2-9]\d*$/.test(name)) collection = 'procedure.others';
+  if (!collection) return null;
+
+  const ordinal = raw.match(/\d+/)?.[0] || null;
+  const fieldName = name.replace(/\d+$/, '');
+  const part = /(?:编码|代码|icd-?10|icd-?9(?:cm-?3)?)$/i.test(fieldName) ? 'code'
+    : /名称$/.test(fieldName) ? 'name' : 'auto';
+  return { collection, ordinal, part };
+}
+
 export function registryEntryForConcept(concept) {
   return MAPPING_BY_CONCEPT[concept] || null;
 }
@@ -96,6 +113,7 @@ function dateParts(raw) {
   const match = String(raw || '').trim().match(/^(\d{4})\s*(?:年|[-/.])\s*(\d{1,2})\s*(?:月|[-/.])\s*(\d{1,2})\s*(?:日)?(?:T|\s*)?(?:(\d{1,2})\s*(?:时|:)\s*(\d{1,2})\s*(?:分|:)\s*(\d{1,2})?\s*(?:秒)?(?:\.(\d+))?)?\s*(Z|[+-]\d{2}:?\d{2}|[+-]\d{2})?$/i);
   if (!match) return null;
   const [, yearText, monthText, dayText, hourText = '0', minuteText = '0', secondText = '0', fraction = '', zone = ''] = match;
+  const hasTime = Boolean(match[4]);
   const year = Number(yearText), month = Number(monthText), day = Number(dayText);
   const hour = Number(hourText), minute = Number(minuteText), second = Number(secondText);
   const date = new Date(`${yearText}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}T00:00:00Z`);
@@ -107,7 +125,7 @@ function dateParts(raw) {
     if (!parts) return null;
     offset = `${parts[1]}${parts[2]}:${parts[3] || '00'}`;
   }
-  return { date: `${yearText}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`, instant: `${yearText}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}T${String(hour).padStart(2,'0')}:${String(minute).padStart(2,'0')}:${String(second).padStart(2,'0')}${fraction ? `.${fraction}` : ''}${offset}` };
+  return { date: `${yearText}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`, hasTime, instant: `${yearText}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}T${String(hour).padStart(2,'0')}:${String(minute).padStart(2,'0')}:${String(second).padStart(2,'0')}${fraction ? `.${fraction}` : ''}${offset}` };
 }
 
 export function normalizeMappedValue(concept, value) {
@@ -122,7 +140,9 @@ export function normalizeCanonicalValue(type, value) {
   const raw=String(value??'').trim();
   if(type==='date')return dateParts(raw)?.date||raw;
   if(type==='datetime'){
-    const parts=dateParts(raw),date=new Date(parts?.instant||raw);
+    const parts=dateParts(raw);
+    if(parts&&!parts.hasTime)return parts.date;
+    const date=new Date(parts?.instant||raw);
     return Number.isFinite(date.getTime())?date.toISOString():raw;
   }
   if(type==='sex'){

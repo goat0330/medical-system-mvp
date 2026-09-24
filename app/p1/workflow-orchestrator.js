@@ -8,9 +8,10 @@ import { runInsuranceAudit } from './audit-engine.js';
 import { validateGroupingInputIntegrity } from './drg-input-validator.js';
 
 function runGrouper(route,snapshot,confirmedMappings){
-  if(route.paymentMethod==='DRG')return groupDrg3(snapshot,{confirmedMappings});
-  if(route.paymentMethod==='DIP')return groupDip3(snapshot,{confirmedMappings});
-  return {status:'OTHER_PAYMENT',method:'OTHER',group:null,trace:[]};
+  if(!route?.grouperReady)return {status:'GROUPER_NOT_AVAILABLE',method:route?.paymentMethod,version:route?.grouperVersion||null,group:null,trace:[{stage:'GROUPER_PROFILE_VALIDATION',status:'BLOCKED',input:route?.displayName||route?.id||'支付方案',output:'未执行分组',rule:route?.reason||'该方案对应的分组规则尚未接入。'}]};
+  const result=route.paymentMethod==='DRG'?groupDrg3(snapshot,{confirmedMappings}):route.paymentMethod==='DIP'?groupDip3(snapshot,{confirmedMappings}):{status:'OTHER_PAYMENT',method:'OTHER',version:null,group:null,trace:[]};
+  if(result.version!==route.grouperVersion||result.method!==route.paymentMethod||(result.group&&result.grouperSystem!==route.grouperSystem))return {status:'GROUPER_PROFILE_VERSION_MISMATCH',method:route.paymentMethod,version:result.version||null,group:null,trace:[{stage:'GROUPER_PROFILE_VALIDATION',status:'BLOCKED',input:`${result.grouperSystem||result.method||'未知'} / ${result.version||'未知版本'}`,output:`期望 ${route.grouperSystem} / ${route.grouperVersion}`,rule:'执行器与所选分组方案的系统/版本不完全匹配，已拒绝继续。'}]};
+  return {...result,grouperSystem:route.grouperSystem};
 }
 function invalidGroupingResult(route,inputIntegrity){
   return {
@@ -30,6 +31,8 @@ function freezeRun(type,{episode,workspace}){
     groupingResult={status:'BLOCKED_BY_FACT_CONFLICT',method:route.paymentMethod,group:null,trace:[{stage:'PATIENT_FACT_RECONCILIATION',status:'BLOCKED',input:'Patient Fact Store',output:`${factBlocking.length} 个关键事实冲突待确认`,rule:'正式/预分组必须使用已确认患者事实；多源冲突不得静默覆盖。'}]};
   }else if(!inputIntegrity.ok){
     groupingResult=invalidGroupingResult(route,inputIntegrity);
+  }else if(!route.grouperReady){
+    groupingResult=runGrouper(route,snapshot,workspace.confirmedMappings||[]);
   }else{
     groupingResult=runGrouper(route,snapshot,workspace.confirmedMappings||[]);
   }
@@ -45,6 +48,7 @@ export function runFormalGrouping({episode,workspace}){
   const blocking=run.settlementIssues.filter((x)=>x.severity==='error');
   if(blocking.length){run.groupingResult={status:'BLOCKED_BY_DATA_QUALITY',method:run.route.paymentMethod,group:null,trace:[{stage:'FORMAL_SUBMISSION_VALIDATION',status:'BLOCKED',input:'医保结算清单',output:`${blocking.length}个阻断错误`,rule:'正式分组前先通过医保结算清单数据质量校验'}]};run.paymentResult={status:'NOT_CALCULATED',reason:'正式分组被数据质量阻断。',amount:null};run.formalStatus='BLOCKED_BY_DATA_QUALITY';return run;}
   if(run.groupingResult?.mappingConfirmationRequired){run.formalStatus='PENDING_CODING_CONFIRMATION';run.paymentResult={status:'NOT_CALCULATED',reason:'编码标准化候选尚未由编码员确认，正式分组结果只能作为试算。',amount:null};return run;}
+  if(run.groupingResult?.status==='GROUPER_NOT_AVAILABLE'||run.groupingResult?.status==='GROUPER_PROFILE_VERSION_MISMATCH'){run.formalStatus='GROUPER_UNAVAILABLE';run.paymentResult={status:'NOT_CALCULATED',reason:'当前方案没有与所选版本匹配的可执行分组器。',amount:null};return run;}
   run.formalStatus=run.groupingResult?.group?'FORMAL_GROUPED':'NOT_GROUPED';return run;
 }
 export function runAuditAgainstFormal({episode,workspace,formalRun}){
