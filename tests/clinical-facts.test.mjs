@@ -58,4 +58,19 @@ const dateContext=buildClinicalFactContext({episode:goldenDateEpisode,documentSn
   {keyCode:'DE06.00.017.00',keyName:'出院时间',keyValue:'2026年09月23日10时30分'},
 ]}}]});
 assert.ok(!dateContext.conflicts.some((x)=>['patient.birthDate','admission.at','discharge.at'].includes(x.concept)),'equivalent Chinese and ISO date formats must not create conflicts');
+
+const datePrecisionContext=buildClinicalFactContext({episode:goldenDateEpisode,documentSnapshots:[{templateId:'preop',snapshot:{data:[
+  {keyCode:'DE06.00.092.00',keyName:'入院时间',keyValue:'2026-09-18'},
+]}}]});
+assert.ok(!datePrecisionContext.conflicts.some((x)=>x.concept==='admission.at'),'a date-only document value must not conflict with a precise timestamp on the same local date');
+assert.equal(datePrecisionContext.facts.find((x)=>x.concept==='admission.at').value,'2026-09-18T01:20:00.000Z','date-only evidence must not replace a more precise admission timestamp');
+assert.equal(normalizeMappedValue('admission.at','2026年09月18日'),'2026-09-18','a date-only timestamp must preserve its precision');
+const wrongDateContext=buildClinicalFactContext({episode:goldenDateEpisode,documentSnapshots:[{templateId:'preop',snapshot:{data:[
+  {keyCode:'DE06.00.092.00',keyName:'入院时间',keyValue:'2026-09-17'},
+]}}]});
+assert.ok(wrongDateContext.conflicts.some((x)=>x.concept==='admission.at'),'a date-only value on a different local date must remain a conflict');
+const wrongTimeContext=buildClinicalFactContext({episode:goldenDateEpisode,documentSnapshots:[{templateId:'admission',snapshot:{data:[
+  {keyCode:'DE06.00.092.00',keyName:'入院时间',keyValue:'2026-09-18 10:20:00'},
+]}}]});
+assert.ok(wrongTimeContext.conflicts.some((x)=>x.concept==='admission.at'),'precise timestamps on the same date but at different times must remain a conflict');
 console.log('PASS clinical fact/evidence/conflict/projection');

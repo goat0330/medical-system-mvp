@@ -54,6 +54,11 @@ assert.equal(dip.groupingResult.group.sourceSheet,'二、并项规则下的核�
 assert.ok(dip.groupingResult.trace.some(x=>x.stage==='DIP_MERGE_RULE'&&x.status==='MATCHED'));
 assert.equal(dip.groupingResult.productionRuleCoverage,'OFFICIAL_WORKBOOK_FULL');
 
+const beijing=runRealBusinessPipeline({episode,settlement:list,settlementIssues:issues,policyProfileId:'BJ-DRG-2.0-2025'});
+assert.equal(beijing.groupingResult.status,'GROUPER_NOT_AVAILABLE','legacy pipeline must also refuse to run the national grouper for the Beijing profile');
+assert.equal(beijing.groupingResult.group,null);
+assert.equal(beijing.paymentResult.amount,null);
+
 // Upstream/open-source known CHS-DRG 3.0 regression path, now executed against the user-provided official workbook.
 const sample={episodeId:'UPSTREAM-SAMPLE',patient:{sex:1,age:45},principalDiagnosis:{code:'K80.101',name:'胆囊结石伴慢性胆囊炎'},secondaryDiagnoses:[{code:'I50.900',name:'心力衰竭'}],principalProcedure:{code:'51.2300',name:'腹腔镜下胆囊切除术'},otherProcedures:[],discharge:{method:'1'},clinicalFactors:{lengthOfStay:5},source:{}};
 const g=groupDrg3(sample);

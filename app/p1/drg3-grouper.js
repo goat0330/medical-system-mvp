@@ -175,7 +175,7 @@ export function groupDrg3(snapshot,options={}){
   }
   trace.push({stage:'DRG',status:'MATCHED',input:`${adrg.code}；年龄=${ctx.NL}；MCC=${ctx.MCC.join(',')||'无'}；CC=${ctx.CC.join(',')||'无'}`,output:`${drg.code} ${drg.name}`,rule:drg.rule||'该ADRG默认细分组',source:`DRG!${drg.sourceRow}`});
   return {
-    status:normalized.mappingConfirmationRequired?'GROUPED_PENDING_CODING_CONFIRMATION':'GROUPED',method:'DRG',version:DRG3_OFFICIAL.version,
+    status:normalized.mappingConfirmationRequired?'GROUPED_PENDING_CODING_CONFIRMATION':'GROUPED',method:'DRG',grouperSystem:'CHS-DRG',version:DRG3_OFFICIAL.version,
     rulePackId:DRG3_OFFICIAL.id,sourceFile:DRG3_OFFICIAL.sourceFile,sourceSha256:DRG3_OFFICIAL.sha256,counts:DRG3_OFFICIAL.counts,productionRuleCoverage:'OFFICIAL_WORKBOOK_FULL',
     normalizedInput:input,mappingConfirmationRequired:normalized.mappingConfirmationRequired,mdc:{code:mdc.code,name:mdc.name},adrg:{code:adrg.code,name:adrg.name},group:{code:drg.code,name:drg.name,type:'DRG'},
     severity:{mcc:ctx.MCC,cc:ctx.CC,excluded:ctx.severityExcluded},trace,formulaErrors,

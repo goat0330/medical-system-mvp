@@ -24,6 +24,12 @@ assert.doesNotMatch(aiFieldCollection, /field\.text && !isDirectIdentityField\(f
 assert.match(main, /AI 本次未返回可定位的问题/);
 assert.match(main, /执行过程与来源/);
 assert.match(main, /未接入医学规范\/指南知识库/);
+assert.match(main, /患者证据聚合/);
+assert.match(main, /ClinicalFact 标准化/);
+assert.match(main, /并行检索来源/);
+assert.match(main, /证据充分性评估/);
+assert.match(main, /confirm-ai-finding/);
+assert.match(main, /不向模型传患者姓名\/病案号/);
 assert.match(main, /function aiQcTracePanel\(\)/);
 assert.match(main, /state\.aiQcTrace/);
 assert.match(main, /function selectPatient\(key\)/);

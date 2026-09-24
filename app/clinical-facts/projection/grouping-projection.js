@@ -10,7 +10,9 @@ export function buildGroupingFactProjection(context) {
       factRefs: { sex: ref(sex), age: ref(age), birthDate: ref(birth) },
     },
     principalDiagnosis: dxCode || dxName ? { code: dxCode?.value || '', name: dxName?.value || '', factRefs: { code: ref(dxCode), name: ref(dxName) } } : null,
+    secondaryDiagnoses: context.collections?.['diagnosis.secondary'] || [],
     principalProcedure: opCode || opName ? { code: opCode?.value || '', name: opName?.value || '', factRefs: { code: ref(opCode), name: ref(opName) } } : null,
+    otherProcedures: context.collections?.['procedure.others'] || [],
     quality: {
       conflicts: context.conflicts.filter((x) => x.impactScope.includes('GROUPING')),
       blockingConflicts: context.conflicts.filter((x) => x.blocking && x.impactScope.includes('GROUPING')),

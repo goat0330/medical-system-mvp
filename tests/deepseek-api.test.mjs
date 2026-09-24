@@ -29,10 +29,17 @@ const input = {
   documentTitle: "入院记录",
   principalDiagnosis: { name: "社区获得性肺炎", code: "J18.9" },
   scopes: { currentDocument: true, relatedDocuments: false, frontpageFields: false },
+  qualityTypes: ["completeness", "consistency", "medical_reasonableness"],
   fields: [
     { name: "现病史", code: "HISTORY", fieldId: "history", documentId: "admission", documentTitle: "入院记录", text: "患者咳嗽3天，无发热。" },
     { name: "主诉", code: "CHIEF_COMPLAINT", fieldId: "chief-complaint", documentId: "admission", documentTitle: "入院记录", text: "咳嗽3天。" },
   ],
+  patientContext: {
+    evidence: [{ evidenceId: "QC-EV-1", sourceType: "LIS", documentTitle: "血常规", fieldName: "白细胞", fieldCode: "WBC", concept: "lab.wbc", value: "8.1", eventTime: "2026-09-23", excerpt: "白细胞 8.1×10^9/L" }],
+    facts: [{ concept: "lab.wbc", value: "8.1", status: "CONFIRMED", evidenceIds: ["QC-EV-1"] }],
+    conflicts: [],
+    deterministicRules: [{ code: "RULE-1", severity: "warning", fieldName: "现病史", fieldCode: "HISTORY", fieldId: "history", message: "本地规则提示需补充症状演变。" }],
+  },
 };
 
 async function startServer(fetchImpl, models = [config()]) {
@@ -96,7 +103,7 @@ test("invalid and oversized input are rejected before the upstream call", async 
 
     const oversized = await postQc(baseUrl, {
       ...input,
-      fields: [{ ...input.fields[0], text: "x".repeat(140_000) }],
+      fields: Array.from({ length: 1_500 }, (_, index) => ({ ...input.fields[0], fieldId: `field-${index}`, text: "x".repeat(12_000) })),
     });
     assert.equal(oversized.response.status, 413);
     assert.equal(oversized.json.error.code, "PAYLOAD_TOO_LARGE");
@@ -110,6 +117,7 @@ test("configured DeepSeek model returns source-grounded findings", async () => {
   let requestUrl;
   let requestOptions;
   const finding = {
+    qualityType: "consistency",
     severity: "warning",
     title: "现病史信息可补充",
     message: "现病史缺少对症状演变的描述。",
@@ -120,6 +128,8 @@ test("configured DeepSeek model returns source-grounded findings", async () => {
     evidence: "现病史原文包含“咳嗽3天”。",
     rationale: "症状持续时间已给出，但演变信息不足。",
     suggestion: "请由医生补充症状演变及伴随症状。",
+    evidenceRefs: ["QC-EV-1"],
+    evidenceStatus: "sufficient",
   };
   const { server, baseUrl } = await startServer(async (url, options) => {
     requestUrl = url;
@@ -133,6 +143,12 @@ test("configured DeepSeek model returns source-grounded findings", async () => {
     assert.equal(result.json.findings[0].title, finding.title);
     assert.equal(result.json.findings[0].documentId, "admission");
     assert.equal(result.json.findings[0].anchors[0].documentTitle, "入院记录");
+    assert.equal(result.json.findings[0].qualityType, "consistency");
+    assert.deepEqual(result.json.findings[0].evidenceRefs, ["QC-EV-1"]);
+    assert.equal(result.json.findings[0].allowAutoEdit, false);
+    assert.equal(result.json.trace.patientContext.evidenceCount, 1);
+    assert.equal(result.json.trace.model.modelId, "deepseek-chat");
+    assert.equal(result.json.trace.retrievals.find((item) => item.title === "医保规则库").status, "not_configured");
     assert.equal(requestUrl, "https://api.deepseek.com/v1/chat/completions");
     assert.equal(requestOptions.method, "POST");
     assert.equal(requestOptions.headers.Authorization, "Bearer test-only-key");
@@ -143,8 +159,19 @@ test("configured DeepSeek model returns source-grounded findings", async () => {
       documentTitle: input.documentTitle,
       principalDiagnosis: input.principalDiagnosis,
       scopes: input.scopes,
+      qualityTypes: input.qualityTypes,
       fields: input.fields,
+      patientContext: input.patientContext,
+      knowledgeCoverage: {
+        sameEpisodeEvidence: "provided_if_available",
+        localDocumentRules: "provided_if_available",
+        medicalGuidelines: "not_integrated",
+        completeCodingAuthority: "not_integrated",
+        nhsaInsuranceTwoLibraries: "not_integrated",
+        drgDipGroupingRules: "separate_module_not_called_by_document_qc",
+      },
     });
+    assert.equal(upstreamBody.max_tokens, 65_536);
   } finally {
     await closeServer(server);
   }
@@ -199,7 +226,8 @@ test("invalid model anchors are not returned", async () => {
   try {
     const result = await postQc(baseUrl, input);
     assert.equal(result.response.status, 502);
-    assert.equal(result.json.error.code, "UPSTREAM_INVALID_RESPONSE");
+    assert.equal(result.json.error.code, "MODEL_EVIDENCE_INVALID");
+    assert.equal(result.json.error.trace.failedStage, "evidence_validation");
   } finally {
     await closeServer(server);
   }
@@ -232,6 +260,111 @@ test("cross-field and missing-information anchors stay grounded in source fields
     assert.equal(result.json.findings[1].anchors.length, 1);
     assert.equal(result.json.findings[1].anchors[0].anchorType, "field");
     assert.equal(result.json.findings[1].anchors[0].quote, "");
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test("patient evidence citations must belong to this request", async () => {
+  const finding = {
+    severity: "warning", title: "引用越界", message: "不可引用未提交材料。", fieldCode: "HISTORY", fieldId: "history",
+    anchorType: "text", quote: "咳嗽", evidenceRefs: ["OTHER-EPISODE-EVIDENCE"], evidence: "不可信", rationale: "不可信", suggestion: "医生核验。",
+  };
+  const { server, baseUrl } = await startServer(async () => mockResponse({ choices: [{ message: { content: JSON.stringify({ findings: [finding] }) } }] }));
+  try {
+    const result = await postQc(baseUrl, input);
+    assert.equal(result.response.status, 502);
+    assert.equal(result.json.error.code, "MODEL_EVIDENCE_INVALID");
+    assert.equal(result.json.error.trace.failedStage, "evidence_validation");
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test("quality control accepts more than 500 fields and uncapped context arrays", async () => {
+  let received;
+  const expandedContext = {
+    evidence: Array.from({ length: 75 }, (_, index) => ({
+      evidenceId: `QC-EV-${index + 1}`, sourceType: "LIS", documentTitle: "检验报告", fieldName: `指标${index + 1}`,
+      fieldCode: `LAB-${index + 1}`, concept: `lab.${index + 1}`, value: "正常", eventTime: "2026-09-23", excerpt: "检验结果正常",
+    })),
+    facts: Array.from({ length: 120 }, (_, index) => ({ concept: `lab.${index + 1}`, value: "正常", status: "CONFIRMED", evidenceIds: [`QC-EV-${index % 75 + 1}`] })),
+    conflicts: Array.from({ length: 30 }, (_, index) => ({
+      conflictId: `C-${index + 1}`, concept: `conflict.${index + 1}`, severity: "warning", blocking: false, reason: "需要人工核对",
+      evidenceIds: Array.from({ length: 20 }, (_unused, refIndex) => `QC-EV-${(refIndex + index) % 75 + 1}`),
+    })),
+    deterministicRules: Array.from({ length: 30 }, (_, index) => ({ code: `RULE-${index + 1}`, severity: "warning", fieldName: "字段", fieldCode: "HISTORY", fieldId: "history", message: "本地规则提醒" })),
+  };
+  const expandedInput = {
+    ...input,
+    fields: Array.from({ length: 650 }, (_, index) => ({
+      name: `字段${index + 1}`, code: `FIELD-${index + 1}`, fieldId: `field-${index + 1}`, documentId: "admission", documentTitle: "入院记录", text: `记录内容${index + 1}`,
+    })),
+    patientContext: expandedContext,
+  };
+  const { server, baseUrl } = await startServer(async (_url, options) => {
+    received = JSON.parse(JSON.parse(options.body).messages[1].content);
+    return mockResponse({ choices: [{ finish_reason: "stop", message: { content: JSON.stringify({ findings: [] }) } }] });
+  });
+  try {
+    const result = await postQc(baseUrl, expandedInput);
+    assert.equal(result.response.status, 200);
+    assert.equal(received.fields.length, 650);
+    assert.equal(received.patientContext.evidence.length, 75);
+    assert.equal(received.patientContext.facts.length, 120);
+    assert.equal(received.patientContext.conflicts.length, 30);
+    assert.equal(received.patientContext.conflicts[0].evidenceIds.length, 20);
+    assert.equal(received.patientContext.deterministicRules.length, 30);
+    assert.equal(result.json.trace.input.fieldCount, 650);
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test("truncated model output is automatically split and every field is reviewed", async () => {
+  const fields = Array.from({ length: 73 }, (_, index) => ({
+    name: `字段${index + 1}`, code: `FIELD-${index + 1}`, fieldId: `field-${index + 1}`, documentId: "admission", documentTitle: "入院记录", text: `原文${index + 1}`,
+  }));
+  const seenFieldIds = [];
+  const { server, baseUrl } = await startServer(async (_url, options) => {
+    const requestBody = JSON.parse(options.body);
+    const prompt = JSON.parse(requestBody.messages[1].content);
+    const reviewFields = prompt.reviewFields || prompt.fields;
+    if (reviewFields.length > 1) return mockResponse({ choices: [{ finish_reason: "length", message: { content: "" } }] });
+    const field = prompt.fields.find((item) => item.fieldId === reviewFields[0].fieldId);
+    seenFieldIds.push(field.fieldId);
+    const finding = {
+      severity: "warning", title: `核查${field.name}`, message: `请核对${field.name}。`, fieldCode: field.code, fieldId: field.fieldId,
+      documentId: field.documentId, anchorType: "text", quote: field.text, evidence: "与提交原文核对。", rationale: "回归测试。", suggestion: "请人工核验。",
+    };
+    return mockResponse({ choices: [{ finish_reason: "stop", message: { content: JSON.stringify({ findings: [finding] }) } }] });
+  });
+  try {
+    const result = await postQc(baseUrl, { ...input, fields });
+    assert.equal(result.response.status, 200);
+    assert.equal(result.json.findings.length, 73);
+    assert.deepEqual([...seenFieldIds].sort(), fields.map((field) => field.fieldId).sort());
+    assert.equal(result.json.trace.input.fieldCount, 73);
+    assert.equal(result.json.trace.processing.automaticallySplit, true);
+    assert.equal(result.json.trace.processing.requestCount, 145);
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test("quality-control findings are not capped at 24", async () => {
+  const fields = Array.from({ length: 30 }, (_, index) => ({
+    name: `字段${index + 1}`, code: `FIELD-${index + 1}`, fieldId: `field-${index + 1}`, documentId: "admission", documentTitle: "入院记录", text: `原文${index + 1}`,
+  }));
+  const findings = fields.map((field) => ({
+    severity: "info", title: `核查${field.name}`, message: `请关注${field.name}。`, fieldCode: field.code, fieldId: field.fieldId,
+    documentId: field.documentId, anchorType: "text", quote: field.text, evidence: "核对原文。", rationale: "覆盖测试。", suggestion: "医生确认。",
+  }));
+  const { server, baseUrl } = await startServer(async () => mockResponse({ choices: [{ finish_reason: "stop", message: { content: JSON.stringify({ findings }) } }] }));
+  try {
+    const result = await postQc(baseUrl, { ...input, fields });
+    assert.equal(result.response.status, 200);
+    assert.equal(result.json.findings.length, 30);
   } finally {
     await closeServer(server);
   }

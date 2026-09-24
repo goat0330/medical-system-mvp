@@ -9,7 +9,7 @@ export function groupingPath({ mdc = null, adrg = null, drg = null, labels = ['M
 
 export function ruleTrace(rows = []) {
   if (!rows.length) return '<div class="empty-state">正式 3.0 规则包接入后，此处展示逐步命中路径。</div>';
-  return `<div class="rule-trace">${rows.map((row, index) => `<div class="rule-trace__row"><div class="rule-trace__index">${index + 1}</div><div><strong>${escapeHtml(first(row.title, row.name, row.code, `步骤 ${index + 1}`))}</strong><p>${escapeHtml(first(row.message, row.reason, row.description, ''))}</p></div>${statusBadge(first(row.status, '已命中'), row.tone || 'blue', true)}</div>`).join('')}</div>`;
+  return `<div class="rule-trace">${rows.map((row, index) => `<div class="rule-trace__row"><div class="rule-trace__index">${index + 1}</div><div><strong>${escapeHtml(first(row.title, row.name, row.code, `步骤 ${index + 1}`))}</strong><p>${escapeHtml(first(row.message, row.reason, row.description, ''))}</p>${row.details?.length?`<details class="rule-trace__details"><summary>查看规则依据</summary><dl>${row.details.map((item)=>`<div><dt>${escapeHtml(item.label)}</dt><dd>${escapeHtml(item.value)}</dd></div>`).join('')}</dl></details>`:''}</div>${statusBadge(first(row.status, '已命中'), row.tone || 'blue', true)}</div>`).join('')}</div>`;
 }
 
 export function riskIssueCard(risk, selected = false, actionsHtml = '') {

@@ -56,7 +56,7 @@ export function searchDip3DiagnosisCatalog(query=''){
 function result(rule,type,input,trace,normalized){
   const primaryCare=(DIP3_OFFICIAL.primaryCare||[]).find(r=>anySpec(input.principalDiagnosis?.code,r.principalDiagnosis)&&listExpressionMatch(allProcedures(input),r.principalProcedure));
   return {
-    status:normalized.mappingConfirmationRequired?'GROUPED_PENDING_CODING_CONFIRMATION':'GROUPED',method:'DIP',version:DIP3_OFFICIAL.version,
+    status:normalized.mappingConfirmationRequired?'GROUPED_PENDING_CODING_CONFIRMATION':'GROUPED',method:'DIP',grouperSystem:'CHS-DIP',version:DIP3_OFFICIAL.version,
     rulePackId:DIP3_OFFICIAL.id,sourceFile:DIP3_OFFICIAL.sourceFile,sourceSha256:DIP3_OFFICIAL.sha256,counts:DIP3_OFFICIAL.counts,productionRuleCoverage:'OFFICIAL_WORKBOOK_FULL',
     normalizedInput:input,mappingConfirmationRequired:normalized.mappingConfirmationRequired,
     group:{code:`${rule.category}-${rule.seq}`,category:rule.category,sequence:rule.seq,name:label(rule),type,sourceSheet:rule.sourceSheet,sourceRow:rule.sourceRow},
